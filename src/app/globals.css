@@ -1,0 +1,213 @@
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Primary Colors */
+  --primary-navy: #0f2c69;
+  --accent-orange: #f5ad2e;
+  --secondary-blue: #7f7afe;
+  --light-gray: #ededed;
+  --white: #ffffff;
+  
+  /* Text Colors */
+  --text-primary: #0f2c69;
+  --text-secondary: #7f7afe;
+  --text-dark: #212529;
+  --text-light: #6c757d;
+  
+  /* Status Colors */
+  --success: #28a745;
+  --warning: #f5ad2e;
+  --danger: #dc3545;
+  --info: #7f7afe;
+  
+  /* Typography */
+  --font-primary: 'Montserrat', sans-serif;
+  --font-body: 'Georgia', serif;
+  --font-mono: 'Source Code Pro', monospace;
+  --font-arabic: 'Noto Sans Arabic', sans-serif;
+}
+
+/* Reset and Base Styles */
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  font-family: var(--font-body);
+  color: var(--text-dark);
+  background-color: var(--white);
+}
+
+/* Typography Hierarchy */
+h1 {
+  font-family: var(--font-primary);
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+}
+
+h2 {
+  font-family: var(--font-primary);
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+}
+
+h3 {
+  font-family: var(--font-primary);
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+p {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+/* Button Styles */
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary-navy), var(--secondary-blue));
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-family: var(--font-primary);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(15, 44, 105, 0.3);
+}
+
+.btn-secondary {
+  background: var(--accent-orange);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-family: var(--font-primary);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-secondary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(245, 173, 46, 0.3);
+}
+
+/* Card Styles */
+.assessment-card {
+  background: var(--white);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(15, 44, 105, 0.1);
+  padding: 24px;
+  margin-bottom: 20px;
+  border-left: 4px solid var(--primary-navy);
+}
+
+.role-card {
+  background: var(--white);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(15, 44, 105, 0.1);
+  padding: 20px;
+  margin-bottom: 16px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.role-card:hover {
+  border-color: var(--secondary-blue);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(15, 44, 105, 0.15);
+}
+
+.role-card.selected {
+  border-color: var(--primary-navy);
+  background: linear-gradient(135deg, rgba(15, 44, 105, 0.05), rgba(127, 122, 254, 0.05));
+}
+
+/* Container and Layout */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.page-container {
+  min-height: 100vh;
+  padding: 20px 0;
+}
+
+/* Progress Bar */
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background-color: var(--light-gray);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-navy), var(--secondary-blue));
+  transition: width 0.3s ease;
+}
+
+/* RTL Support */
+.rtl {
+  direction: rtl;
+  text-align: right;
+  font-family: var(--font-arabic);
+}
+
+.rtl .assessment-card {
+  border-left: none;
+  border-right: 4px solid var(--primary-navy);
+}
+
+.rtl .btn-primary,
+.rtl .btn-secondary {
+  text-align: center;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  h1 {
+    font-size: 2rem;
+  }
+  
+  h2 {
+    font-size: 1.5rem;
+  }
+  
+  .container {
+    padding: 0 15px;
+  }
+  
+  .assessment-card,
+  .role-card {
+    padding: 16px;
+  }
+}
