@@ -5,17 +5,17 @@ export async function GET() {
   try {
     const db = await openDatabase();
     
-    // Get all questions with their options
+    // Get all questions with correct table/column names
     const questions = await db.all(`
       SELECT 
         q.id,
-        q.dimension_id as subdomain,
+        q.subdomain_id as subdomain,
         q.title_en as title,
         q.text_en as question,
-        d.scenario_en as scenario
+        q.scenario_en as scenario,
+        q.icon
       FROM questions q
-      LEFT JOIN dimensions d ON q.dimension_id = d.id
-      ORDER BY q.id
+      ORDER BY CAST(REPLACE(q.id, 'Q', '') AS INTEGER)
     `);
 
     // Get options for each question
@@ -32,19 +32,15 @@ export async function GET() {
           ORDER BY display_order
         `, [question.id]);
 
-        // Add icons based on question ID or subdomain
-        const iconMap = {
-          'FOCUS_APP_Q1': '⚡',
-          'FOCUS_APP_Q2': '🔧', 
-          'FOCUS_APP_Q3': '🔄',
-          'FOCUS_ANA_Q4': '🔬',
-          'FOCUS_ANA_Q5': '🔮',
-          'FOCUS_ANA_Q6': '📊',
-          'FOCUS_ANA_Q7': '📈',
-          'FOCUS_STR_Q8': '💰',
-          'FOCUS_STR_Q9': '🚀',
-          'FOCUS_STR_Q10': '📢'
-        };
+        // Separate scoring options (A,B,C,D,E) from NA/NS
+        const scoringOptions = options.filter(opt => !['NA', 'NS'].includes(opt.option_key));
+        const fixedOptions = options.filter(opt => ['NA', 'NS'].includes(opt.option_key));
+
+        // Shuffle scoring options randomly
+        const shuffledScoring = scoringOptions.sort(() => Math.random() - 0.5);
+
+        // Combine: shuffled scoring options + fixed NA/NS at end
+        const shuffledOptions = [...shuffledScoring, ...fixedOptions];
 
         return {
           id: question.id,
@@ -52,8 +48,8 @@ export async function GET() {
           title: question.title,
           question: question.question,
           scenario: question.scenario,
-          icon: iconMap[question.id] || '📋', // Default icon
-          options: options.map(opt => ({
+          icon: question.icon || '📋', // Use icon from database
+          options: shuffledOptions.map(opt => ({
             value: opt.option_key === 'NA' ? 'na' : 
                    opt.option_key === 'NS' ? 'ns' : 
                    opt.value,
