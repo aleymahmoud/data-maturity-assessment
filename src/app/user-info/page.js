@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 export default function UserInfoPage() {
@@ -13,43 +13,69 @@ export default function UserInfoPage() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [codeData, setCodeData] = useState(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const language = searchParams.get('lang') || 'en';
+
+  // Language-specific content
+  const getContent = () => {
+    const content = {
+      en: {
+        language: 'Language',
+        title: 'Your Information',
+        description: 'Please provide your details to personalize the assessment experience.',
+        nameLabel: 'Full Name *',
+        namePlaceholder: 'Enter your full name',
+        emailLabel: 'Email Address *',
+        emailPlaceholder: 'Enter your email address',
+        organizationLabel: 'Organization *',
+        organizationPlaceholder: 'Enter your organization name',
+        roleTitleLabel: 'Job Title/Role *',
+        roleTitlePlaceholder: 'Enter your job title or role',
+        continueButton: 'Continue to Role Selection',
+        processingButton: 'Processing...',
+        backLink: 'Back to Code Entry'
+      },
+      ar: {
+        language: 'اللغة',
+        title: 'معلوماتك',
+        description: 'يرجى تقديم تفاصيلك لتخصيص تجربة التقييم.',
+        nameLabel: 'الاسم الكامل *',
+        namePlaceholder: 'أدخل اسمك الكامل',
+        emailLabel: 'عنوان البريد الإلكتروني *',
+        emailPlaceholder: 'أدخل عنوان بريدك الإلكتروني',
+        organizationLabel: 'المؤسسة *',
+        organizationPlaceholder: 'أدخل اسم مؤسستك',
+        roleTitleLabel: 'المسمى الوظيفي/الدور *',
+        roleTitlePlaceholder: 'أدخل مسماك الوظيفي أو دورك',
+        continueButton: 'متابعة لاختيار الدور',
+        processingButton: 'جاري المعالجة...',
+        backLink: 'العودة لإدخال الرمز'
+      }
+    };
+    return content[language];
+  };
+
+  const content = getContent();
 
   useEffect(() => {
     // Check if user came from code entry
-    const assessmentCode = sessionStorage.getItem('assessmentCode');
-    const organizationName = sessionStorage.getItem('organizationName');
-    const intendedRecipient = sessionStorage.getItem('intendedRecipient');
-
-    if (!assessmentCode) {
-      // Redirect to code entry if no valid code
-      router.push('/code-entry');
+    const code = sessionStorage.getItem('assessmentCode');
+    const orgName = sessionStorage.getItem('organizationName');
+    
+    if (!code) {
+      router.push(`/code-entry?lang=${language}`);
       return;
     }
 
-    setCodeData({
-      code: assessmentCode,
-      organizationName,
-      intendedRecipient
-    });
-
-    // Pre-fill organization name if available
-    if (organizationName) {
+    // Pre-fill organization if available
+    if (orgName) {
       setFormData(prev => ({
         ...prev,
-        organization: organizationName
+        organization: orgName
       }));
     }
-
-    // Pre-fill recipient name if available
-    if (intendedRecipient) {
-      setFormData(prev => ({
-        ...prev,
-        name: intendedRecipient
-      }));
-    }
-  }, [router]);
+  }, [router, language]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -65,11 +91,11 @@ export default function UserInfoPage() {
     setError('');
 
     try {
-      // Store user info for role selection
-      sessionStorage.setItem('userInfo', JSON.stringify(formData));
+      // Store user data in session storage
+      sessionStorage.setItem('userData', JSON.stringify(formData));
       
-      // Navigate to role selection
-      router.push('/role-selection');
+      // Navigate to role selection with language
+      router.push(`/role-selection?lang=${language}`);
     } catch (error) {
       console.error('Error:', error);
       setError('An error occurred. Please try again.');
@@ -78,202 +104,190 @@ export default function UserInfoPage() {
     }
   };
 
-  if (!codeData) {
-    return (
-      <div className="page-container">
-        <div className="container">
-          <div style={{ textAlign: 'center', paddingTop: '100px' }}>
-            <h2>Redirecting...</h2>
-            <p>Please wait while we verify your assessment code.</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="page-container">
+    <div className={`page-container ${language === 'ar' ? 'rtl' : ''}`}>
       <div className="container">
-        <div style={{ maxWidth: '700px', margin: '0 auto', paddingTop: '40px' }}>
+        <div style={{ 
+          maxWidth: '600px', 
+          margin: '0 auto', 
+          paddingTop: '60px',
+          fontFamily: 'var(--font-primary)'
+        }}>
           
+          {/* Language Indicator */}
+          <div style={{ 
+            textAlign: language === 'ar' ? 'left' : 'right', 
+            marginBottom: '20px' 
+          }}>
+            <span style={{ 
+              fontSize: '0.9rem', 
+              color: 'var(--text-secondary)',
+              fontFamily: 'var(--font-primary)'
+            }}>
+              {content.language}: {language === 'ar' ? 'العربية' : 'English'}
+            </span>
+          </div>
+
           {/* Header */}
-          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-            <h1>Your Information</h1>
-            <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', margin: '20px 0' }}>
-              Please provide your details to personalize your assessment experience.
+          <div style={{ 
+            textAlign: 'center', 
+            marginBottom: '40px',
+            direction: language === 'ar' ? 'rtl' : 'ltr'
+          }}>
+            <h1 style={{ 
+              marginBottom: '10px',
+              fontFamily: 'var(--font-primary)'
+            }}>
+              {content.title}
+            </h1>
+            <p style={{ 
+              fontSize: '1.1rem', 
+              color: 'var(--text-secondary)',
+              fontFamily: 'var(--font-primary)'
+            }}>
+              {content.description}
             </p>
           </div>
 
-          {/* Code Confirmation */}
-          <div className="assessment-card" style={{ 
-            backgroundColor: 'rgba(40, 167, 69, 0.1)',
-            border: '2px solid var(--success)',
-            marginBottom: '30px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '1.5rem' }}>✅</span>
-              <div>
-                <strong>Assessment Code Verified: {codeData.code}</strong>
-                {codeData.organizationName && (
-                  <div style={{ fontSize: '0.9rem', color: 'var(--text-light)' }}>
-                    Organization: {codeData.organizationName}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* User Info Form */}
+          {/* Form */}
           <div className="assessment-card">
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} style={{
+              direction: language === 'ar' ? 'rtl' : 'ltr'
+            }}>
               
-              {/* Name Field */}
+              {/* Name */}
               <div style={{ marginBottom: '20px' }}>
-                <label 
-                  htmlFor="name"
-                  style={{ 
-                    display: 'block',
-                    marginBottom: '8px',
-                    fontFamily: 'var(--font-primary)',
-                    fontWeight: '600',
-                    color: 'var(--text-primary)'
-                  }}
-                >
-                  Full Name <span style={{ color: 'var(--danger)' }}>*</span>
+                <label htmlFor="name" style={{ 
+                  display: 'block', 
+                  marginBottom: '8px', 
+                  fontFamily: 'var(--font-primary)', 
+                  fontWeight: '600',
+                  textAlign: language === 'ar' ? 'right' : 'left'
+                }}>
+                  {content.nameLabel}
                 </label>
                 <input
+                  type="text"
                   id="name"
                   name="name"
-                  type="text"
                   value={formData.name}
                   onChange={handleInputChange}
-                  placeholder="Enter your full name"
-                  required
+                  placeholder={content.namePlaceholder}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
                     fontSize: '1rem',
-                    border: `2px solid ${!formData.name ? 'var(--danger)' : 'var(--light-gray)'}`,
+                    border: '2px solid var(--light-gray)',
                     borderRadius: '8px',
-                    fontFamily: 'var(--font-body)'
+                    fontFamily: 'var(--font-primary)',
+                    textAlign: language === 'ar' ? 'right' : 'left'
                   }}
+                  required
                 />
               </div>
 
-              {/* Email Field */}
+              {/* Email */}
               <div style={{ marginBottom: '20px' }}>
-                <label 
-                  htmlFor="email"
-                  style={{ 
-                    display: 'block',
-                    marginBottom: '8px',
-                    fontFamily: 'var(--font-primary)',
-                    fontWeight: '600',
-                    color: 'var(--text-primary)'
-                  }}
-                >
-                  Email Address <span style={{ color: 'var(--danger)' }}>*</span>
+                <label htmlFor="email" style={{ 
+                  display: 'block', 
+                  marginBottom: '8px', 
+                  fontFamily: 'var(--font-primary)', 
+                  fontWeight: '600',
+                  textAlign: language === 'ar' ? 'right' : 'left'
+                }}>
+                  {content.emailLabel}
                 </label>
                 <input
+                  type="email"
                   id="email"
                   name="email"
-                  type="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  placeholder="Enter your email address"
-                  required
+                  placeholder={content.emailPlaceholder}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
                     fontSize: '1rem',
-                    border: `2px solid ${!formData.email || !/\S+@\S+\.\S+/.test(formData.email) ? 'var(--danger)' : 'var(--light-gray)'}`,
+                    border: '2px solid var(--light-gray)',
                     borderRadius: '8px',
-                    fontFamily: 'var(--font-body)'
+                    fontFamily: 'var(--font-primary)',
+                    textAlign: language === 'ar' ? 'right' : 'left'
                   }}
+                  required
                 />
-                {formData.email && !/\S+@\S+\.\S+/.test(formData.email) && (
-                  <div style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: '4px' }}>
-                    Please enter a valid email address
-                  </div>
-                )}
               </div>
 
-              {/* Organization Field */}
+              {/* Organization */}
               <div style={{ marginBottom: '20px' }}>
-                <label 
-                  htmlFor="organization"
-                  style={{ 
-                    display: 'block',
-                    marginBottom: '8px',
-                    fontFamily: 'var(--font-primary)',
-                    fontWeight: '600',
-                    color: 'var(--text-primary)'
-                  }}
-                >
-                  Organization *
+                <label htmlFor="organization" style={{ 
+                  display: 'block', 
+                  marginBottom: '8px', 
+                  fontFamily: 'var(--font-primary)', 
+                  fontWeight: '600',
+                  textAlign: language === 'ar' ? 'right' : 'left'
+                }}>
+                  {content.organizationLabel}
                 </label>
                 <input
+                  type="text"
                   id="organization"
                   name="organization"
-                  type="text"
                   value={formData.organization}
                   onChange={handleInputChange}
-                  placeholder="Enter your organization name"
-                  required
+                  placeholder={content.organizationPlaceholder}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
                     fontSize: '1rem',
                     border: '2px solid var(--light-gray)',
                     borderRadius: '8px',
-                    fontFamily: 'var(--font-body)'
+                    fontFamily: 'var(--font-primary)',
+                    textAlign: language === 'ar' ? 'right' : 'left'
                   }}
+                  required
                 />
               </div>
 
-              {/* Role Title Field */}
-              <div style={{ marginBottom: '25px' }}>
-                <label 
-                  htmlFor="roleTitle"
-                  style={{ 
-                    display: 'block',
-                    marginBottom: '8px',
-                    fontFamily: 'var(--font-primary)',
-                    fontWeight: '600',
-                    color: 'var(--text-primary)'
-                  }}
-                >
-                  Your Role/Title *
+              {/* Role Title */}
+              <div style={{ marginBottom: '30px' }}>
+                <label htmlFor="roleTitle" style={{ 
+                  display: 'block', 
+                  marginBottom: '8px', 
+                  fontFamily: 'var(--font-primary)', 
+                  fontWeight: '600',
+                  textAlign: language === 'ar' ? 'right' : 'left'
+                }}>
+                  {content.roleTitleLabel}
                 </label>
                 <input
+                  type="text"
                   id="roleTitle"
                   name="roleTitle"
-                  type="text"
                   value={formData.roleTitle}
                   onChange={handleInputChange}
-                  placeholder="Enter your role or job title"
-                  required
+                  placeholder={content.roleTitlePlaceholder}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
                     fontSize: '1rem',
                     border: '2px solid var(--light-gray)',
                     borderRadius: '8px',
-                    fontFamily: 'var(--font-body)'
+                    fontFamily: 'var(--font-primary)',
+                    textAlign: language === 'ar' ? 'right' : 'left'
                   }}
+                  required
                 />
               </div>
 
               {/* Error Message */}
               {error && (
-                <div style={{
-                  padding: '12px',
-                  backgroundColor: 'rgba(220, 53, 69, 0.1)',
-                  border: '2px solid var(--danger)',
-                  borderRadius: '8px',
-                  color: 'var(--danger)',
+                <div style={{ 
+                  color: 'var(--danger)', 
                   marginBottom: '20px',
-                  textAlign: 'center'
+                  fontSize: '0.9rem',
+                  fontWeight: '500',
+                  textAlign: 'center',
+                  fontFamily: 'var(--font-primary)'
                 }}>
                   {error}
                 </div>
@@ -282,17 +296,18 @@ export default function UserInfoPage() {
               {/* Submit Button */}
               <button
                 type="submit"
-                className="btn-primary"
                 disabled={loading || !formData.name || !formData.email || !formData.organization || !formData.roleTitle}
+                className="btn-primary"
                 style={{
                   width: '100%',
                   fontSize: '1.1rem',
-                  padding: '14px',
+                  padding: '14px 28px',
                   opacity: (loading || !formData.name || !formData.email || !formData.organization || !formData.roleTitle) ? 0.5 : 1,
-                  cursor: (loading || !formData.name || !formData.email || !formData.organization || !formData.roleTitle) ? 'not-allowed' : 'pointer'
+                  cursor: (loading || !formData.name || !formData.email || !formData.organization || !formData.roleTitle) ? 'not-allowed' : 'pointer',
+                  fontFamily: 'var(--font-primary)'
                 }}
               >
-                {loading ? 'Processing...' : 'Continue to Role Selection'}
+                {loading ? content.processingButton : content.continueButton}
               </button>
 
             </form>
@@ -300,8 +315,12 @@ export default function UserInfoPage() {
 
           {/* Back Link */}
           <div style={{ textAlign: 'center', marginTop: '20px' }}>
-            <Link href="/code-entry" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>
-              ← Back to Code Entry
+            <Link href={`/code-entry?lang=${language}`} style={{ 
+              color: 'var(--text-secondary)', 
+              textDecoration: 'none',
+              fontFamily: 'var(--font-primary)'
+            }}>
+              ← {content.backLink}
             </Link>
           </div>
 
