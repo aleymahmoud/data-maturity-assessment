@@ -1,4 +1,14 @@
-const language = searchParams.get('lang') || 'en';
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+
+export default function RoleSelectionPage() {
+  const [selectedRole, setSelectedRole] = useState('');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const language = searchParams.get('lang') || 'en';
 
   // Language-specific content
   const getContent = () => {
@@ -16,6 +26,8 @@ const language = searchParams.get('lang') || 'en';
         startButton: 'START ASSESSMENT',
         selectButton: 'SELECT A ROLE TO CONTINUE',
         backLink: 'Back to User Information',
+        rolesLabel: 'Roles:',
+        focusLabel: 'Focus:',
         roles: {
           executive: {
             title: 'Executive/C-Suite Level',
@@ -62,6 +74,8 @@ const language = searchParams.get('lang') || 'en';
         startButton: 'بدء التقييم',
         selectButton: 'اختر دوراً للمتابعة',
         backLink: 'العودة لمعلومات المستخدم',
+        rolesLabel: 'الأدوار:',
+        focusLabel: 'التركيز:',
         roles: {
           executive: {
             title: 'المستوى التنفيذي/كبار القادة',
@@ -101,59 +115,6 @@ const language = searchParams.get('lang') || 'en';
 
   const content = getContent();
 
-  // Language-specific content
-  const getContent = () => {
-    const content = {
-      en: {
-        language: 'Language',
-        title: 'Select Your Role',
-        description: 'Your role helps us provide personalized recommendations and relevant action plans. All users will answer the same 35 questions regardless of role selection.',
-        languageSection: 'Assessment Language:',
-        changeLanguage: 'Change language:',
-        note: 'Note:',
-        noteText: 'Role selection is used only for personalizing your recommendations. You will see all 35 questions covering the complete data maturity framework.',
-        noteLanguage: 'The assessment will be conducted in',
-        noteLanguageChange: 'You can change the language above if needed.',
-        startButton: 'START ASSESSMENT',
-        selectButton: 'SELECT A ROLE TO CONTINUE',
-        backLink: 'Back to User Information',
-        roles: {
-          executive: {
-            title: 'Executive/C-Suite Level',
-            description: 'CEO, COO, CTO, CDO, VP Strategy',
-            focus: 'Strategic decision-making and direction',
-            recommendations: 'Strategic leadership recommendations'
-          },
-          'it-technology': {
-            title: 'IT/Technology Department',
-            description: 'IT Director, Data Engineer, System Admin',
-            focus: 'Technical systems and infrastructure',
-            recommendations: 'Technical infrastructure recommendations'
-          },
-          operations: {
-            title: 'Operations & Program Management',
-            description:'use client';
-
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-
-export default function RoleSelectionPage() {
-  const [selectedRole, setSelectedRole] = useState('');
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const language = searchParams.get('lang') || 'en';
-
-  useEffect(() => {
-    // Check if user came from user info
-    const userData = sessionStorage.getItem('userData');
-    
-    if (!userData) {
-      router.push(`/user-info?lang=${language}`);
-      return;
-    }
-  }, [router, language]);
-
   const roles = [
     {
       id: 'executive',
@@ -176,6 +137,16 @@ export default function RoleSelectionPage() {
       ...content.roles.compliance
     }
   ];
+
+  useEffect(() => {
+    // Check if user came from user info
+    const userData = sessionStorage.getItem('userData');
+    
+    if (!userData) {
+      router.push(`/user-info?lang=${language}`);
+      return;
+    }
+  }, [router, language]);
 
   const handleRoleSelect = (roleId) => {
     setSelectedRole(roleId);
@@ -370,7 +341,7 @@ export default function RoleSelectionPage() {
                       fontSize: '0.95rem',
                       fontFamily: 'var(--font-primary)'
                     }}>
-                      <strong>{language === 'ar' ? 'الأدوار:' : 'Roles:'}</strong> {role.description}
+                      <strong>{content.rolesLabel}</strong> {role.description}
                     </p>
                     <p style={{ 
                       marginBottom: '4px', 
@@ -378,7 +349,7 @@ export default function RoleSelectionPage() {
                       fontSize: '0.9rem',
                       fontFamily: 'var(--font-primary)'
                     }}>
-                      <strong>{language === 'ar' ? 'التركيز:' : 'Focus:'}</strong> {role.focus}
+                      <strong>{content.focusLabel}</strong> {role.focus}
                     </p>
                     <p style={{ 
                       margin: '0', 
