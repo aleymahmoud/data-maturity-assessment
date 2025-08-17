@@ -1,18 +1,24 @@
 import { NextResponse } from 'next/server';
 import { openDatabase } from '../../../lib/database.js';
 
-export async function GET() {
+export async function GET(request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const language = searchParams.get('lang') || 'en'; // Default to English
+    
     const db = await openDatabase();
     
-    // Get all questions with correct table/column names
+    // Get all questions with language-specific content
     const questions = await db.all(`
       SELECT 
         q.id,
         q.subdomain_id as subdomain,
-        q.title_en as title,
-        q.text_en as question,
-        q.scenario_en as scenario,
+        q.title_en,
+        q.title_ar,
+        q.text_en,
+        q.text_ar,
+        q.scenario_en,
+        q.scenario_ar,
         q.icon
       FROM questions q
       ORDER BY CAST(REPLACE(q.id, 'Q', '') AS INTEGER)
@@ -24,7 +30,8 @@ export async function GET() {
         const options = await db.all(`
           SELECT 
             option_key,
-            option_text_en as text,
+            option_text_en,
+            option_text_ar,
             score_value as value,
             display_order
           FROM question_options 
@@ -45,15 +52,15 @@ export async function GET() {
         return {
           id: question.id,
           subdomain: question.subdomain,
-          title: question.title,
-          question: question.question,
-          scenario: question.scenario,
-          icon: question.icon || '📋', // Use icon from database
+          title: language === 'ar' ? question.title_ar : question.title_en,
+          question: language === 'ar' ? question.text_ar : question.text_en,
+          scenario: language === 'ar' ? question.scenario_ar : question.scenario_en,
+          icon: question.icon || '📋',
           options: shuffledOptions.map(opt => ({
             value: opt.option_key === 'NA' ? 'na' : 
                    opt.option_key === 'NS' ? 'ns' : 
                    opt.value,
-            text: opt.text
+            text: language === 'ar' ? opt.option_text_ar : opt.option_text_en
           }))
         };
       })
@@ -61,7 +68,8 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      questions: questionsWithOptions
+      questions: questionsWithOptions,
+      language: language
     });
 
   } catch (error) {
