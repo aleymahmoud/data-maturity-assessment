@@ -247,7 +247,10 @@ export default function AssessmentPage() {
             
             {/* Scenario */}
             {currentQuestion.scenario && (
-              <div style={{ marginBottom: '25px' }}>
+              <div style={{ 
+                marginBottom: '25px',
+                direction: language === 'ar' ? 'rtl' : 'ltr'  // ← ADD THIS LINE
+              }}>
                 <div style={{
                   color: 'var(--secondary-blue)',
                   marginBottom: '8px',

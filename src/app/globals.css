@@ -22,10 +22,10 @@
   --info: #7f7afe;
   
   /* Typography */
-  --font-primary: 'Montserrat', sans-serif;
+  --font-primary: 'Montserrat';
   --font-body: 'Georgia', serif;
   --font-mono: 'Source Code Pro', monospace;
-  --font-arabic: 'Noto Sans Arabic', sans-serif;
+  --font-arabic: 'Montserrat', sans-serif;
 }
 
 /* Reset and Base Styles */

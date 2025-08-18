@@ -43,7 +43,7 @@ export default function HomePage() {
     <div className={`page-container ${language === 'ar' ? 'rtl' : ''}`}>
       <div className="container">
         <div className="welcome-container" style={{ 
-          maxWidth: '800px', 
+          maxWidth: '950px', 
           margin: '0 auto', 
           textAlign: 'center', 
           paddingTop: '60px',
