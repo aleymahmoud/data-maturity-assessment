@@ -102,26 +102,46 @@ export default function AssessmentPage() {
     try {
       setLoading(true);
       
-      // Get stored session data
-      const userData = sessionStorage.getItem('userData');
-      const selectedRole = sessionStorage.getItem('selectedRole');
-      const code = sessionStorage.getItem('assessmentCode');
+      // Check if we're resuming by code from the URL
+      const codeFromUrl = searchParams.get('code');
+      const questionNumberFromUrl = searchParams.get('question');
       
-      if (!userData || !selectedRole || !code) {
-        router.push(`/role-selection?lang=${language}`);
-        return;
-      }
+      // Variables to store session data
+      let sessionCode = '';
+      let userData = null;
+      let selectedRole = null;
+      
+      if (codeFromUrl) {
+        // We're resuming by code
+        sessionCode = codeFromUrl;
+        setAssessmentCode(codeFromUrl);
+        
+        if (questionNumberFromUrl) {
+          setCurrentQuestionIndex(parseInt(questionNumberFromUrl));
+        }
+      } else {
+        // Regular flow - get stored session data
+        userData = sessionStorage.getItem('userData');
+        selectedRole = sessionStorage.getItem('selectedRole');
+        sessionCode = sessionStorage.getItem('assessmentCode');
+        
+        if (!userData || !selectedRole || !sessionCode) {
+          router.push(`/role-selection?lang=${language}`);
+          return;
+        }
 
-      setAssessmentCode(code);
+        setAssessmentCode(sessionCode);
+      }
 
       // Create or resume session
       const sessionResponse = await fetch('/api/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          code: code,
-          userData: JSON.parse(userData),
-          language: language
+          code: sessionCode,
+          userData: codeFromUrl ? null : JSON.parse(userData),
+          language: language,
+          resumeByCode: !!codeFromUrl
         })
       });
 
@@ -217,7 +237,8 @@ export default function AssessmentPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId: sessionId,
-          responses: allResponses
+          responses: allResponses,
+          code: assessmentCode
         })
       });
 

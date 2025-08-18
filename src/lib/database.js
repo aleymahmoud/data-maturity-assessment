@@ -180,7 +180,7 @@ export async function markCodeAsUsed(code, sessionId) {
 }
 
 // Save assessment responses (bulk save for save/exit functionality)
-export async function saveAssessmentResponses(sessionId, responses) {
+export async function saveAssessmentResponses(sessionId, responses, assessmentCode = null) {
   const database = await openDatabase();
   
   try {
@@ -191,10 +191,10 @@ export async function saveAssessmentResponses(sessionId, responses) {
       
       await database.run(`
         INSERT OR REPLACE INTO user_responses (
-          id, session_id, question_id, option_key, score_value, answered_at
+          id, session_id, question_id, option_key, score_value, assessment_code, answered_at
         )
-        VALUES (?, ?, ?, ?, ?, datetime('now'))
-      `, [`response_${sessionId}_${questionId}`, sessionId, questionId, response, scoreValue]);
+        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+      `, [`response_${sessionId}_${questionId}`, sessionId, questionId, response, scoreValue, assessmentCode]);
     }
 
     // Update session progress
@@ -225,7 +225,7 @@ export async function getSavedResponses(sessionId) {
   
   try {
     const responses = await database.all(`
-      SELECT question_id, option_key, score_value
+      SELECT question_id, option_key, score_value, assessment_code
       FROM user_responses 
       WHERE session_id = ?
       ORDER BY answered_at
@@ -244,7 +244,7 @@ export async function getSavedResponses(sessionId) {
   }
 }
 
-// Find first unanswered question
+// Find first unanswered question by session ID
 export async function getFirstUnansweredQuestion(sessionId, totalQuestions = 35) {
   const database = await openDatabase();
   
@@ -269,6 +269,55 @@ export async function getFirstUnansweredQuestion(sessionId, totalQuestions = 35)
     return { success: true, questionNumber: totalQuestions - 1 };
   } catch (error) {
     console.error('Error finding unanswered question:', error);
+    return { success: false, error: 'Failed to find unanswered question' };
+  }
+}
+
+// Find first unanswered question by assessment code
+export async function getFirstUnansweredQuestionByCode(code, totalQuestions = 35) {
+  const database = await openDatabase();
+  
+  try {
+    // First validate the code
+    const codeValidation = await validateAssessmentCode(code);
+    
+    if (!codeValidation.valid) {
+      return { success: false, error: codeValidation.error };
+    }
+    
+    const answeredQuestions = await database.all(`
+      SELECT question_id 
+      FROM user_responses 
+      WHERE assessment_code = ?
+    `, [code]);
+    
+    const answeredIds = answeredQuestions.map(row => row.question_id);
+    
+    // Find first unanswered question (Q1, Q2, Q3... Q35)
+    for (let i = 1; i <= totalQuestions; i++) {
+      const questionId = `Q${i}`;
+      if (!answeredIds.includes(questionId)) {
+        return { 
+          success: true, 
+          questionNumber: i - 1, // Return 0-based index
+          code: code,
+          totalAnswered: answeredIds.length,
+          totalQuestions: totalQuestions
+        };
+      }
+    }
+    
+    // All questions answered
+    return { 
+      success: true, 
+      questionNumber: totalQuestions - 1,
+      code: code,
+      totalAnswered: totalQuestions,
+      totalQuestions: totalQuestions,
+      completed: true
+    };
+  } catch (error) {
+    console.error('Error finding unanswered question by code:', error);
     return { success: false, error: 'Failed to find unanswered question' };
   }
 }
@@ -328,5 +377,47 @@ export async function logAction(userType, userId, action, details, ipAddress) {
   } catch (error) {
     console.error('Error logging action:', error);
     return { success: false };
+  }
+}
+
+// Get unanswered questions for a specific assessment code
+export async function getUnansweredQuestionsByCode(code) {
+  const database = await openDatabase();
+  
+  try {
+    // First validate the code
+    const codeValidation = await validateAssessmentCode(code);
+    
+    if (!codeValidation.valid) {
+      return { success: false, error: codeValidation.error };
+    }
+    
+    // Get all questions
+    const allQuestions = await database.all(`
+      SELECT id FROM questions ORDER BY display_order
+    `);
+    
+    // Get answered questions for this code
+    const answeredQuestions = await database.all(`
+      SELECT DISTINCT question_id 
+      FROM user_responses 
+      WHERE assessment_code = ?
+    `, [code]);
+    
+    const answeredIds = answeredQuestions.map(row => row.question_id);
+    
+    // Filter out answered questions
+    const unansweredQuestions = allQuestions.filter(q => !answeredIds.includes(q.id));
+    
+    return { 
+      success: true, 
+      code: code,
+      unansweredQuestions: unansweredQuestions.map(q => q.id),
+      totalUnanswered: unansweredQuestions.length,
+      totalQuestions: allQuestions.length
+    };
+  } catch (error) {
+    console.error('Error getting unanswered questions by code:', error);
+    return { success: false, error: 'Failed to retrieve unanswered questions' };
   }
 }

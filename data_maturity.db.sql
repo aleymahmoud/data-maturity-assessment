@@ -143,9 +143,11 @@ CREATE TABLE IF NOT EXISTS user_responses (
     question_id TEXT NOT NULL,
     option_key TEXT NOT NULL, -- 'A', 'B', 'C', 'D', 'E', 'NA'
     score_value INTEGER NOT NULL,
+    assessment_code TEXT,
     answered_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (session_id) REFERENCES assessment_sessions (id),
     FOREIGN KEY (question_id) REFERENCES questions (id),
+    FOREIGN KEY (assessment_code) REFERENCES assessment_codes (code),
     UNIQUE(session_id, question_id) -- One response per question per session
 );
 CREATE TABLE IF NOT EXISTS users (

@@ -175,6 +175,12 @@ export default function HomePage() {
           }}>
             {content.startButton}
           </Link>
+          
+          <div style={{ marginTop: '20px' }}>
+            <Link href={`/resume-by-code?lang=${language}`} className="resume-link" style={{ color: '#0070f3', textDecoration: 'underline' }}>
+              {language === 'en' ? 'Resume assessment with code' : 'استئناف التقييم باستخدام الرمز'}
+            </Link>
+          </div>
 
           {/* Privacy Notice */}
           <p style={{ 

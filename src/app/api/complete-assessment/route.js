@@ -13,8 +13,8 @@ export async function POST(request) {
       }, { status: 400 });
     }
 
-    // First save all responses
-    const saveResult = await saveAssessmentResponses(sessionId, responses);
+    // First save all responses with assessment code
+    const saveResult = await saveAssessmentResponses(sessionId, responses, code);
     
     if (!saveResult.success) {
       return NextResponse.json({

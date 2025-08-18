@@ -4,7 +4,7 @@ import { saveAssessmentResponses } from '../../../lib/database.js';
 
 export async function POST(request) {
   try {
-    const { sessionId, responses } = await request.json();
+    const { sessionId, responses, code } = await request.json();
     
     if (!sessionId || !responses) {
       return NextResponse.json({
@@ -13,8 +13,8 @@ export async function POST(request) {
       }, { status: 400 });
     }
 
-    // Save responses to database
-    const saveResult = await saveAssessmentResponses(sessionId, responses);
+    // Save responses to database with assessment code if provided
+    const saveResult = await saveAssessmentResponses(sessionId, responses, code);
     
     if (!saveResult.success) {
       return NextResponse.json({
