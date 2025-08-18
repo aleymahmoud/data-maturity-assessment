@@ -11,104 +11,18 @@ export default function AssessmentPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [shuffledOptions, setShuffledOptions] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [sessionId, setSessionId] = useState('');
+  const [userId, setUserId] = useState('');
+  const [assessmentCode, setAssessmentCode] = useState('');
+  const [isResumedSession, setIsResumedSession] = useState(false);
   
   const router = useRouter();
   const searchParams = useSearchParams();
   const language = searchParams.get('lang') || 'en';
   const role = searchParams.get('role') || '';
   const questionParam = parseInt(searchParams.get('question') || '0');
-
-  useEffect(() => {
-    // Validate user came through proper flow
-    const userData = sessionStorage.getItem('userData');
-    const selectedRole = sessionStorage.getItem('selectedRole');
-    
-    if (!userData || !selectedRole) {
-      router.push(`/role-selection?lang=${language}`);
-      return;
-    }
-
-    fetchQuestions();
-  }, [language, router]);
-
-  useEffect(() => {
-    if (questions.length > 0) {
-      setCurrentQuestionIndex(questionParam);
-      
-      // Load existing responses from sessionStorage
-      const savedResponses = sessionStorage.getItem('assessmentResponses');
-      if (savedResponses) {
-        setAllResponses(JSON.parse(savedResponses));
-      }
-    }
-  }, [questions, questionParam]);
-
-  useEffect(() => {
-    if (questions.length > 0) {
-      const currentQuestion = questions[currentQuestionIndex];
-      if (currentQuestion?.options) {
-        setShuffledOptions(currentQuestion.options);
-      }
-    }
-  }, [currentQuestionIndex, questions]);
-
-  const fetchQuestions = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`/api/questions?lang=${language}`);
-      const data = await response.json();
-      
-      if (data.success) {
-        setQuestions(data.questions);
-      } else {
-        setError('Failed to load questions');
-      }
-    } catch (error) {
-      console.error('Error fetching questions:', error);
-      setError('Network error. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAnswerSelect = (questionId, optionValue) => {
-    const newResponses = {
-      ...allResponses,
-      [questionId]: optionValue
-    };
-    
-    setAllResponses(newResponses);
-    
-    // Save to sessionStorage
-    sessionStorage.setItem('assessmentResponses', JSON.stringify(newResponses));
-  };
-
-  const handleNext = () => {
-    if (currentQuestionIndex < questions.length - 1) {
-      const nextIndex = currentQuestionIndex + 1;
-      setCurrentQuestionIndex(nextIndex);
-      router.push(`/assessment?lang=${language}&role=${role}&question=${nextIndex}`);
-    } else {
-      // Assessment complete - go to results
-      router.push(`/results?lang=${language}&role=${role}`);
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentQuestionIndex > 0) {
-      const prevIndex = currentQuestionIndex - 1;
-      setCurrentQuestionIndex(prevIndex);
-      router.push(`/assessment?lang=${language}&role=${role}&question=${prevIndex}`);
-    }
-  };
-
-  const getProgressPercentage = () => {
-    return Math.round(((currentQuestionIndex + 1) / questions.length) * 100);
-  };
-
-  const getAnsweredCount = () => {
-    return Object.keys(allResponses).length;
-  };
 
   // Language-specific text
   const getText = (key) => {
@@ -126,8 +40,16 @@ export default function AssessmentPage() {
         previous: 'Previous',
         next: 'Next',
         finish: 'Finish Assessment',
+        saveExit: 'Save & Exit',
+        saving: 'Saving...',
+        submitting: 'Submitting...',
         backToRole: 'Back to Role Selection',
-        language: 'Language'
+        language: 'Language',
+        resumeNotice: 'Welcome back! Your assessment has been resumed.',
+        saveSuccess: 'Progress saved successfully!',
+        saveError: 'Failed to save progress. Please try again.',
+        submitError: 'Failed to submit assessment. Please try again.',
+        allQuestionsRequired: 'Please answer all questions before submitting.'
       },
       ar: {
         loading: 'جاري تحميل الأسئلة...',
@@ -142,11 +64,232 @@ export default function AssessmentPage() {
         previous: 'السابق',
         next: 'التالي',
         finish: 'إنهاء التقييم',
+        saveExit: 'حفظ والخروج',
+        saving: 'جاري الحفظ...',
+        submitting: 'جاري الإرسال...',
         backToRole: 'العودة لاختيار الدور',
-        language: 'اللغة'
+        language: 'اللغة',
+        resumeNotice: 'مرحباً بعودتك! تم استئناف تقييمك.',
+        saveSuccess: 'تم حفظ التقدم بنجاح!',
+        saveError: 'فشل في حفظ التقدم. يرجى المحاولة مرة أخرى.',
+        submitError: 'فشل في إرسال التقييم. يرجى المحاولة مرة أخرى.',
+        allQuestionsRequired: 'يرجى الإجابة على جميع الأسئلة قبل الإرسال.'
       }
     };
     return texts[language][key] || texts.en[key];
+  };
+
+  useEffect(() => {
+    initializeAssessment();
+  }, [language]);
+
+  useEffect(() => {
+    if (questions.length > 0 && questionParam !== currentQuestionIndex) {
+      setCurrentQuestionIndex(questionParam);
+    }
+  }, [questions, questionParam]);
+
+  useEffect(() => {
+    if (questions.length > 0) {
+      const currentQuestion = questions[currentQuestionIndex];
+      if (currentQuestion?.options) {
+        setShuffledOptions(currentQuestion.options);
+      }
+    }
+  }, [currentQuestionIndex, questions]);
+
+  const initializeAssessment = async () => {
+    try {
+      setLoading(true);
+      
+      // Get stored session data
+      const userData = sessionStorage.getItem('userData');
+      const selectedRole = sessionStorage.getItem('selectedRole');
+      const code = sessionStorage.getItem('assessmentCode');
+      
+      if (!userData || !selectedRole || !code) {
+        router.push(`/role-selection?lang=${language}`);
+        return;
+      }
+
+      setAssessmentCode(code);
+
+      // Create or resume session
+      const sessionResponse = await fetch('/api/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: code,
+          userData: JSON.parse(userData),
+          language: language
+        })
+      });
+
+      const sessionData = await sessionResponse.json();
+      
+      if (!sessionData.success) {
+        setError(sessionData.error || 'Failed to initialize session');
+        return;
+      }
+
+      setSessionId(sessionData.sessionId);
+      setUserId(sessionData.userId);
+      setIsResumedSession(sessionData.isResume);
+
+      // Load saved responses if resuming
+      if (sessionData.isResume && sessionData.savedResponses) {
+        setAllResponses(sessionData.savedResponses);
+        setCurrentQuestionIndex(sessionData.startQuestion || 0);
+        
+        // Update URL to correct question
+        router.push(`/assessment?lang=${language}&role=${role}&question=${sessionData.startQuestion || 0}`);
+      }
+
+      // Fetch questions
+      await fetchQuestions();
+
+    } catch (error) {
+      console.error('Error initializing assessment:', error);
+      setError('Failed to initialize assessment');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchQuestions = async () => {
+    try {
+      const response = await fetch(`/api/questions?lang=${language}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setQuestions(data.questions);
+      } else {
+        setError('Failed to load questions');
+      }
+    } catch (error) {
+      console.error('Error fetching questions:', error);
+      setError('Network error. Please try again.');
+    }
+  };
+
+  const handleAnswerSelect = (questionId, optionValue) => {
+    const newResponses = {
+      ...allResponses,
+      [questionId]: optionValue
+    };
+    
+    setAllResponses(newResponses);
+    
+    // Save to sessionStorage as backup
+    sessionStorage.setItem('assessmentResponses', JSON.stringify(newResponses));
+  };
+
+  const handleNext = () => {
+    if (currentQuestionIndex < questions.length - 1) {
+      const nextIndex = currentQuestionIndex + 1;
+      setCurrentQuestionIndex(nextIndex);
+      router.push(`/assessment?lang=${language}&role=${role}&question=${nextIndex}`);
+    } else {
+      // Last question - show submit
+      handleSubmitAssessment();
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentQuestionIndex > 0) {
+      const prevIndex = currentQuestionIndex - 1;
+      setCurrentQuestionIndex(prevIndex);
+      router.push(`/assessment?lang=${language}&role=${role}&question=${prevIndex}`);
+    }
+  };
+
+  const handleSaveAndExit = async () => {
+    if (!sessionId) {
+      setError('Session not found');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      
+      const response = await fetch('/api/save-responses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: sessionId,
+          responses: allResponses
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Show success message briefly then redirect
+        alert(getText('saveSuccess'));
+        router.push(`/?lang=${language}`);
+      } else {
+        setError(result.error || getText('saveError'));
+      }
+    } catch (error) {
+      console.error('Error saving responses:', error);
+      setError(getText('saveError'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSubmitAssessment = async () => {
+    // Check if all questions are answered
+    const answeredCount = Object.keys(allResponses).length;
+    if (answeredCount < questions.length) {
+      alert(getText('allQuestionsRequired'));
+      return;
+    }
+
+    if (!sessionId || !assessmentCode) {
+      setError('Session or code not found');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      
+      const response = await fetch('/api/complete-assessment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: assessmentCode,
+          sessionId: sessionId,
+          responses: allResponses
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Clear session storage
+        sessionStorage.removeItem('assessmentResponses');
+        sessionStorage.removeItem('assessmentCode');
+        
+        // Redirect to results page (to be created)
+        router.push(`/results?lang=${language}&role=${role}&session=${sessionId}`);
+      } else {
+        setError(result.error || getText('submitError'));
+      }
+    } catch (error) {
+      console.error('Error submitting assessment:', error);
+      setError(getText('submitError'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const getProgressPercentage = () => {
+    return Math.round(((currentQuestionIndex + 1) / questions.length) * 100);
+  };
+
+  const getAnsweredCount = () => {
+    return Object.keys(allResponses).length;
   };
 
   if (loading) {
@@ -174,7 +317,7 @@ export default function AssessmentPage() {
             <p style={{ marginBottom: '30px', color: 'var(--text-secondary)' }}>
               {error || getText('error')}
             </p>
-            <button onClick={fetchQuestions} className="btn-primary">
+            <button onClick={initializeAssessment} className="btn-primary">
               {getText('tryAgain')}
             </button>
           </div>
@@ -200,6 +343,32 @@ export default function AssessmentPage() {
               {getText('language')}: {language === 'ar' ? 'العربية' : 'English'}
             </span>
           </div>
+
+          {/* Resume Notice */}
+          {isResumedSession && (
+            <div className="assessment-card" style={{ 
+              marginBottom: '20px', 
+              backgroundColor: 'rgba(40, 167, 69, 0.1)',
+              borderLeft: language === 'ar' ? 'none' : '4px solid var(--success)',
+              borderRight: language === 'ar' ? '4px solid var(--success)' : 'none'
+            }}>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '10px',
+                flexDirection: language === 'ar' ? 'row-reverse' : 'row'
+              }}>
+                <span style={{ fontSize: '1.2rem' }}>🔄</span>
+                <span style={{ 
+                  color: 'var(--success)', 
+                  fontWeight: '600',
+                  fontFamily: 'var(--font-primary)'
+                }}>
+                  {getText('resumeNotice')}
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Progress Section */}
           <div className="assessment-card" style={{ marginBottom: '30px' }}>
@@ -249,7 +418,7 @@ export default function AssessmentPage() {
             {currentQuestion.scenario && (
               <div style={{ 
                 marginBottom: '25px',
-                direction: language === 'ar' ? 'rtl' : 'ltr'  // ← ADD THIS LINE
+                direction: language === 'ar' ? 'rtl' : 'ltr'
               }}>
                 <div style={{
                   color: 'var(--secondary-blue)',
@@ -258,7 +427,8 @@ export default function AssessmentPage() {
                   alignItems: 'center',
                   gap: '8px',
                   fontWeight: '600',
-                  flexDirection: language === 'ar' ? 'row-reverse' : 'row'
+                  flexDirection: language === 'ar' ? 'row-reverse' : 'row',
+                  fontFamily: 'var(--font-primary)'
                 }}>
                   📖 <strong>{getText('scenario')}:</strong>
                 </div>
@@ -270,7 +440,9 @@ export default function AssessmentPage() {
                   backgroundColor: 'var(--light-gray)',
                   borderRadius: '8px',
                   lineHeight: '1.4',
-                  textAlign: language === 'ar' ? 'right' : 'left'
+                  textAlign: language === 'ar' ? 'right' : 'left',
+                  fontFamily: 'var(--font-primary)',
+                  direction: language === 'ar' ? 'rtl' : 'ltr'
                 }}>
                   {currentQuestion.scenario}
                 </div>
@@ -278,7 +450,10 @@ export default function AssessmentPage() {
             )}
 
             {/* Question */}
-            <div style={{ marginBottom: '20px' }}>
+            <div style={{ 
+              marginBottom: '20px',
+              direction: language === 'ar' ? 'rtl' : 'ltr'
+            }}>
               <h2 style={{ 
                 marginBottom: '10px', 
                 color: 'var(--primary-navy)', 
@@ -287,7 +462,8 @@ export default function AssessmentPage() {
                 alignItems: 'center',
                 gap: '10px',
                 flexDirection: language === 'ar' ? 'row-reverse' : 'row',
-                textAlign: language === 'ar' ? 'right' : 'left'
+                textAlign: language === 'ar' ? 'right' : 'left',
+                fontFamily: 'var(--font-primary)'
               }}>
                 <span style={{ fontSize: '1.8rem' }}>{currentQuestion.icon}</span>
                 {currentQuestion.title}
@@ -297,14 +473,23 @@ export default function AssessmentPage() {
                 color: 'var(--text-dark)', 
                 margin: '0', 
                 lineHeight: '1.5',
-                textAlign: language === 'ar' ? 'right' : 'left'
+                textAlign: language === 'ar' ? 'right' : 'left',
+                fontFamily: 'var(--font-primary)',
+                direction: language === 'ar' ? 'rtl' : 'ltr'
               }}>
                 {currentQuestion.question}
               </p>
             </div>
 
             {/* Options */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', minHeight: '0' }}>
+            <div style={{ 
+              flex: 1, 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '8px', 
+              minHeight: '0',
+              direction: language === 'ar' ? 'rtl' : 'ltr'
+            }}>
               {shuffledOptions.map((option, index) => (
                 <label key={`${option.value}-${index}`} style={{ 
                   display: 'flex', 
@@ -336,7 +521,9 @@ export default function AssessmentPage() {
                     fontSize: '0.95rem', 
                     lineHeight: '1.4',
                     order: language === 'ar' ? 1 : 2,
-                    flex: 1
+                    flex: 1,
+                    fontFamily: 'var(--font-primary)',
+                    direction: language === 'ar' ? 'rtl' : 'ltr'
                   }}>
                     {option.text}
                   </span>
@@ -351,7 +538,8 @@ export default function AssessmentPage() {
             justifyContent: 'space-between', 
             alignItems: 'center',
             marginBottom: '40px',
-            flexDirection: language === 'ar' ? 'row-reverse' : 'row'
+            flexDirection: language === 'ar' ? 'row-reverse' : 'row',
+            gap: '10px'
           }}>
             
             {/* Previous Button */}
@@ -377,19 +565,35 @@ export default function AssessmentPage() {
               </Link>
             )}
 
+            {/* Center - Save & Exit Button */}
+            <button 
+              onClick={handleSaveAndExit}
+              disabled={saving || Object.keys(allResponses).length === 0}
+              className="btn-secondary"
+              style={{ 
+                fontSize: '0.9rem', 
+                padding: '10px 16px',
+                opacity: (saving || Object.keys(allResponses).length === 0) ? 0.5 : 1,
+                cursor: (saving || Object.keys(allResponses).length === 0) ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {saving ? getText('saving') : getText('saveExit')}
+            </button>
+
             {/* Next/Finish Button */}
             <button 
               onClick={handleNext}
-              disabled={!allResponses[currentQuestion.id]}
+              disabled={!allResponses[currentQuestion.id] || submitting}
               className="btn-primary"
               style={{ 
                 fontSize: '1rem', 
                 padding: '12px 24px',
-                opacity: !allResponses[currentQuestion.id] ? 0.5 : 1,
-                cursor: !allResponses[currentQuestion.id] ? 'not-allowed' : 'pointer'
+                opacity: (!allResponses[currentQuestion.id] || submitting) ? 0.5 : 1,
+                cursor: (!allResponses[currentQuestion.id] || submitting) ? 'not-allowed' : 'pointer'
               }}
             >
-              {currentQuestionIndex === questions.length - 1 ? getText('finish') : getText('next')} →
+              {submitting ? getText('submitting') : 
+               currentQuestionIndex === questions.length - 1 ? getText('finish') : getText('next')} →
             </button>
           </div>
 

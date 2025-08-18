@@ -1,3 +1,4 @@
+// Enhanced database functions for code invalidation and session management
 import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 import path from 'path';
@@ -10,7 +11,6 @@ export async function openDatabase() {
   }
 
   try {
-    // Create database file in project root
     const dbPath = path.join(process.cwd(), 'data_maturity.db');
     
     db = await open({
@@ -33,7 +33,7 @@ export async function closeDatabase() {
   }
 }
 
-// Assessment Codes functions
+// Enhanced code validation with session checking
 export async function validateAssessmentCode(code) {
   const database = await openDatabase();
   
@@ -41,11 +41,11 @@ export async function validateAssessmentCode(code) {
     const codeRecord = await database.get(`
       SELECT code, organization_name, intended_recipient, expires_at, is_used, usage_count, max_uses
       FROM assessment_codes 
-      WHERE code = ? AND is_used = 0
+      WHERE code = ?
     `, [code]);
 
     if (!codeRecord) {
-      return { valid: false, error: 'Invalid or already used assessment code' };
+      return { valid: false, error: 'Invalid assessment code' };
     }
 
     // Check expiration
@@ -53,17 +53,30 @@ export async function validateAssessmentCode(code) {
       return { valid: false, error: 'Assessment code has expired' };
     }
 
-    // Check usage limit
-    if (codeRecord.usage_count >= codeRecord.max_uses) {
-      return { valid: false, error: 'Assessment code has reached maximum uses' };
+    // Check if code has been used (completed assessment)
+    if (codeRecord.is_used && codeRecord.usage_count >= codeRecord.max_uses) {
+      return { valid: false, error: 'Assessment code has already been used' };
     }
+
+    // Check for existing session
+    const existingSession = await database.get(`
+      SELECT s.id, s.status, s.completion_percentage, s.language_preference, u.id as user_id
+      FROM assessment_sessions s
+      JOIN users u ON s.user_id = u.id
+      JOIN audit_logs a ON a.details LIKE '%' || ? || '%'
+      WHERE s.status IN ('in_progress', 'completed')
+      ORDER BY s.session_start DESC
+      LIMIT 1
+    `, [code]);
 
     return { 
       valid: true, 
       data: {
         code: codeRecord.code,
         organizationName: codeRecord.organization_name,
-        intendedRecipient: codeRecord.intended_recipient
+        intendedRecipient: codeRecord.intended_recipient,
+        isUsed: codeRecord.is_used,
+        existingSession: existingSession
       }
     };
   } catch (error) {
@@ -72,24 +85,195 @@ export async function validateAssessmentCode(code) {
   }
 }
 
-export async function markCodeAsUsed(code) {
+// Create or resume user session
+export async function createOrResumeSession(code, userData, language = 'en') {
   const database = await openDatabase();
   
   try {
+    // Check for existing user and session
+    const existingUser = await database.get(`
+      SELECT u.*, s.id as session_id, s.status, s.completion_percentage
+      FROM users u
+      LEFT JOIN assessment_sessions s ON u.id = s.user_id
+      WHERE u.email = ? AND u.organization = ?
+      ORDER BY s.session_start DESC
+      LIMIT 1
+    `, [userData.email, userData.organization]);
+
+    let userId, sessionId;
+
+    if (existingUser && existingUser.session_id && existingUser.status === 'in_progress') {
+      // Resume existing session
+      userId = existingUser.id;
+      sessionId = existingUser.session_id;
+      
+      await logAction('user', userId, 'session_resumed', `Code: ${code}, Session: ${sessionId}`, '');
+      
+      return { 
+        success: true, 
+        userId, 
+        sessionId, 
+        isResume: true,
+        completionPercentage: existingUser.completion_percentage
+      };
+    } else {
+      // Create new user if doesn't exist
+      if (!existingUser) {
+        const userResult = await createUser(userData);
+        if (!userResult.success) {
+          return userResult;
+        }
+        userId = userResult.userId;
+      } else {
+        userId = existingUser.id;
+      }
+
+      // Create new session
+      const sessionResult = await createAssessmentSession(userId, 35, language);
+      if (!sessionResult.success) {
+        return sessionResult;
+      }
+      sessionId = sessionResult.sessionId;
+
+      await logAction('user', userId, 'session_created', `Code: ${code}, Session: ${sessionId}`, '');
+
+      return { 
+        success: true, 
+        userId, 
+        sessionId, 
+        isResume: false,
+        completionPercentage: 0
+      };
+    }
+  } catch (error) {
+    console.error('Error creating/resuming session:', error);
+    return { success: false, error: 'Failed to create or resume session' };
+  }
+}
+
+// Mark code as used (called on assessment completion)
+export async function markCodeAsUsed(code, sessionId) {
+  const database = await openDatabase();
+  
+  try {
+    // Update code to mark as used
     await database.run(`
       UPDATE assessment_codes 
       SET is_used = 1, usage_count = usage_count + 1
       WHERE code = ?
     `, [code]);
+
+    // Update session to completed
+    await database.run(`
+      UPDATE assessment_sessions 
+      SET status = 'completed', session_end = datetime('now'), completion_percentage = 100
+      WHERE id = ?
+    `, [sessionId]);
+
+    await logAction('user', null, 'assessment_completed', `Code: ${code}, Session: ${sessionId}`, '');
     
     return { success: true };
   } catch (error) {
     console.error('Error marking code as used:', error);
-    return { success: false, error: 'Failed to update code status' };
+    return { success: false, error: 'Failed to complete assessment' };
   }
 }
 
-// User and Session functions
+// Save assessment responses (bulk save for save/exit functionality)
+export async function saveAssessmentResponses(sessionId, responses) {
+  const database = await openDatabase();
+  
+  try {
+    await database.run('BEGIN TRANSACTION');
+
+    for (const [questionId, response] of Object.entries(responses)) {
+      const scoreValue = (response === 'na' || response === 'ns') ? 0 : parseInt(response);
+      
+      await database.run(`
+        INSERT OR REPLACE INTO user_responses (
+          id, session_id, question_id, option_key, score_value, answered_at
+        )
+        VALUES (?, ?, ?, ?, ?, datetime('now'))
+      `, [`response_${sessionId}_${questionId}`, sessionId, questionId, response, scoreValue]);
+    }
+
+    // Update session progress
+    const totalAnswered = Object.keys(responses).length;
+    const completionPercentage = (totalAnswered / 35) * 100;
+    
+    await database.run(`
+      UPDATE assessment_sessions 
+      SET answered_questions = ?, completion_percentage = ?
+      WHERE id = ?
+    `, [totalAnswered, completionPercentage, sessionId]);
+
+    await database.run('COMMIT');
+
+    await logAction('user', null, 'responses_saved', `Session: ${sessionId}, Responses: ${totalAnswered}`, '');
+
+    return { success: true, savedCount: totalAnswered };
+  } catch (error) {
+    await database.run('ROLLBACK');
+    console.error('Error saving responses:', error);
+    return { success: false, error: 'Failed to save responses' };
+  }
+}
+
+// Get saved responses for session resume
+export async function getSavedResponses(sessionId) {
+  const database = await openDatabase();
+  
+  try {
+    const responses = await database.all(`
+      SELECT question_id, option_key, score_value
+      FROM user_responses 
+      WHERE session_id = ?
+      ORDER BY answered_at
+    `, [sessionId]);
+    
+    // Convert to object format for easy lookup
+    const responseMap = {};
+    responses.forEach(response => {
+      responseMap[response.question_id] = response.option_key;
+    });
+
+    return { success: true, responses: responseMap, count: responses.length };
+  } catch (error) {
+    console.error('Error getting saved responses:', error);
+    return { success: false, error: 'Failed to retrieve saved responses' };
+  }
+}
+
+// Find first unanswered question
+export async function getFirstUnansweredQuestion(sessionId, totalQuestions = 35) {
+  const database = await openDatabase();
+  
+  try {
+    const answeredQuestions = await database.all(`
+      SELECT question_id 
+      FROM user_responses 
+      WHERE session_id = ?
+    `, [sessionId]);
+    
+    const answeredIds = answeredQuestions.map(row => row.question_id);
+    
+    // Find first unanswered question (Q1, Q2, Q3... Q35)
+    for (let i = 1; i <= totalQuestions; i++) {
+      const questionId = `Q${i}`;
+      if (!answeredIds.includes(questionId)) {
+        return { success: true, questionNumber: i - 1 }; // Return 0-based index
+      }
+    }
+    
+    // All questions answered
+    return { success: true, questionNumber: totalQuestions - 1 };
+  } catch (error) {
+    console.error('Error finding unanswered question:', error);
+    return { success: false, error: 'Failed to find unanswered question' };
+  }
+}
+
+// Existing functions (keeping for compatibility)
 export async function createUser(userData) {
   const database = await openDatabase();
   
@@ -108,7 +292,7 @@ export async function createUser(userData) {
   }
 }
 
-export async function createAssessmentSession(userId, totalQuestions = 35) {
+export async function createAssessmentSession(userId, totalQuestions = 35, language = 'en') {
   const database = await openDatabase();
   
   try {
@@ -119,8 +303,8 @@ export async function createAssessmentSession(userId, totalQuestions = 35) {
         id, user_id, session_start, status, language_preference, 
         total_questions, answered_questions, completion_percentage
       )
-      VALUES (?, ?, datetime('now'), 'in_progress', 'en', ?, 0, 0)
-    `, [sessionId, userId, totalQuestions]);
+      VALUES (?, ?, datetime('now'), 'in_progress', ?, ?, 0, 0)
+    `, [sessionId, userId, language, totalQuestions]);
     
     return { success: true, sessionId };
   } catch (error) {
@@ -129,60 +313,6 @@ export async function createAssessmentSession(userId, totalQuestions = 35) {
   }
 }
 
-export async function saveUserResponse(sessionId, questionId, optionKey, scoreValue) {
-  const database = await openDatabase();
-  
-  try {
-    await database.run(`
-      INSERT OR REPLACE INTO user_responses (
-        id, session_id, question_id, option_key, score_value, answered_at
-      )
-      VALUES (?, ?, ?, ?, ?, datetime('now'))
-    `, [`response_${sessionId}_${questionId}`, sessionId, questionId, optionKey, scoreValue]);
-    
-    // Update session progress
-    const totalAnswered = await database.get(`
-      SELECT COUNT(*) as count FROM user_responses WHERE session_id = ?
-    `, [sessionId]);
-    
-    const session = await database.get(`
-      SELECT total_questions FROM assessment_sessions WHERE id = ?
-    `, [sessionId]);
-    
-    const completionPercentage = (totalAnswered.count / session.total_questions) * 100;
-    
-    await database.run(`
-      UPDATE assessment_sessions 
-      SET answered_questions = ?, completion_percentage = ?
-      WHERE id = ?
-    `, [totalAnswered.count, completionPercentage, sessionId]);
-    
-    return { success: true };
-  } catch (error) {
-    console.error('Error saving user response:', error);
-    return { success: false, error: 'Failed to save response' };
-  }
-}
-
-export async function getSessionResponses(sessionId) {
-  const database = await openDatabase();
-  
-  try {
-    const responses = await database.all(`
-      SELECT question_id, option_key, score_value, answered_at
-      FROM user_responses 
-      WHERE session_id = ?
-      ORDER BY answered_at
-    `, [sessionId]);
-    
-    return { success: true, responses };
-  } catch (error) {
-    console.error('Error getting session responses:', error);
-    return { success: false, error: 'Failed to retrieve responses' };
-  }
-}
-
-// Audit logging
 export async function logAction(userType, userId, action, details, ipAddress) {
   const database = await openDatabase();
   
