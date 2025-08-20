@@ -1,27 +1,23 @@
 // src/app/api/session/route.js
 import { NextResponse } from 'next/server';
-import { createOrResumeSession, getSavedResponses, getFirstUnansweredQuestion, getFirstUnansweredQuestionByCode } from '../../../lib/database.js';
+import { createOrResumeSession } from '../../../lib/database.js';
+
+
+
+// REPLACE the entire POST function with this simplified version:
 
 export async function POST(request) {
   try {
-    const { code, userData, language, resumeByCode } = await request.json();
+    const { code, userData, language } = await request.json();
     
-    if (!code) {
+    if (!code || !userData) {
       return NextResponse.json({
         success: false,
-        error: 'Assessment code is required'
-      }, { status: 400 });
-    }
-    
-    // If not resuming by code, userData is required
-    if (!resumeByCode && !userData) {
-      return NextResponse.json({
-        success: false,
-        error: 'User data is required'
+        error: 'Assessment code and user data are required'
       }, { status: 400 });
     }
 
-    // Create or resume session
+    // Always create fresh session (no resume logic)
     const sessionResult = await createOrResumeSession(code, userData, language);
     
     if (!sessionResult.success) {
@@ -31,42 +27,16 @@ export async function POST(request) {
       }, { status: 500 });
     }
 
-    let responseData = {
+    // Always return fresh session data
+    const responseData = {
       success: true,
       sessionId: sessionResult.sessionId,
       userId: sessionResult.userId,
-      isResume: sessionResult.isResume
+      isResume: false,           // Always false
+      savedResponses: {},        // Always empty
+      startQuestion: 0,          // Always start from beginning
+      completionPercentage: 0    // Always 0
     };
-
-    // If resuming by code, use code-based functions
-    if (resumeByCode) {
-      const firstUnanswered = await getFirstUnansweredQuestionByCode(code);
-      
-      if (!firstUnanswered.success) {
-        return NextResponse.json({
-          success: false,
-          error: firstUnanswered.error || 'Failed to retrieve questions for this code'
-        }, { status: 400 });
-      }
-      
-      responseData.isResume = true;
-      responseData.savedResponses = {}; // Will be populated on the client side
-      responseData.startQuestion = firstUnanswered.questionNumber;
-      responseData.completionPercentage = (firstUnanswered.totalAnswered / firstUnanswered.totalQuestions) * 100;
-    }
-    // If resuming session normally, get saved responses and first unanswered question
-    else if (sessionResult.isResume) {
-      const savedResponses = await getSavedResponses(sessionResult.sessionId);
-      const firstUnanswered = await getFirstUnansweredQuestion(sessionResult.sessionId);
-      
-      responseData.savedResponses = savedResponses.success ? savedResponses.responses : {};
-      responseData.startQuestion = firstUnanswered.success ? firstUnanswered.questionNumber : 0;
-      responseData.completionPercentage = sessionResult.completionPercentage;
-    } else {
-      responseData.savedResponses = {};
-      responseData.startQuestion = 0;
-      responseData.completionPercentage = 0;
-    }
 
     return NextResponse.json(responseData);
 

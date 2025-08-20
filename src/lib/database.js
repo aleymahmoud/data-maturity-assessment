@@ -85,69 +85,47 @@ export async function validateAssessmentCode(code) {
   }
 }
 
-// Create or resume user session
+// src/lib/database.js
+// FIND the createOrResumeSession function (around line 85-150)
+// REPLACE it with this simplified version:
+
+// Create fresh user session (no resume logic)
 export async function createOrResumeSession(code, userData, language = 'en') {
   const database = await openDatabase();
   
   try {
-    // Check for existing user and session
-    const existingUser = await database.get(`
-      SELECT u.*, s.id as session_id, s.status, s.completion_percentage
-      FROM users u
-      LEFT JOIN assessment_sessions s ON u.id = s.user_id
-      WHERE u.email = ? AND u.organization = ?
-      ORDER BY s.session_start DESC
-      LIMIT 1
-    `, [userData.email, userData.organization]);
+    // Always create new user and session (no resume logic)
+    const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Create new user
+    await database.run(`
+      INSERT INTO users (id, name, organization, role_title, email, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    `, [userId, userData.name, userData.organization, userData.roleTitle, userData.email]);
 
-    let userId, sessionId;
+    // Create new session
+    const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    await database.run(`
+      INSERT INTO assessment_sessions (
+        id, user_id, status, session_start, language_preference, 
+        answered_questions, completion_percentage
+      )
+      VALUES (?, ?, 'in_progress', datetime('now'), ?, 0, 0)
+    `, [sessionId, userId, language]);
 
-    if (existingUser && existingUser.session_id && existingUser.status === 'in_progress') {
-      // Resume existing session
-      userId = existingUser.id;
-      sessionId = existingUser.session_id;
-      
-      await logAction('user', userId, 'session_resumed', `Code: ${code}, Session: ${sessionId}`, '');
-      
-      return { 
-        success: true, 
-        userId, 
-        sessionId, 
-        isResume: true,
-        completionPercentage: existingUser.completion_percentage
-      };
-    } else {
-      // Create new user if doesn't exist
-      if (!existingUser) {
-        const userResult = await createUser(userData);
-        if (!userResult.success) {
-          return userResult;
-        }
-        userId = userResult.userId;
-      } else {
-        userId = existingUser.id;
-      }
+    await logAction('user', userId, 'session_created', `Code: ${code}, Session: ${sessionId}`, '');
 
-      // Create new session
-      const sessionResult = await createAssessmentSession(userId, 35, language);
-      if (!sessionResult.success) {
-        return sessionResult;
-      }
-      sessionId = sessionResult.sessionId;
-
-      await logAction('user', userId, 'session_created', `Code: ${code}, Session: ${sessionId}`, '');
-
-      return { 
-        success: true, 
-        userId, 
-        sessionId, 
-        isResume: false,
-        completionPercentage: 0
-      };
-    }
+    return { 
+      success: true, 
+      sessionId: sessionId, 
+      userId: userId, 
+      isResume: false,           // Always false
+      completionPercentage: 0    // Always 0
+    };
   } catch (error) {
-    console.error('Error creating/resuming session:', error);
-    return { success: false, error: 'Failed to create or resume session' };
+    console.error('Error creating session:', error);
+    return { success: false, error: 'Failed to create session' };
   }
 }
 

@@ -11,12 +11,11 @@ export default function AssessmentPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [shuffledOptions, setShuffledOptions] = useState([]);
-  const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [sessionId, setSessionId] = useState('');
   const [userId, setUserId] = useState('');
   const [assessmentCode, setAssessmentCode] = useState('');
-  const [isResumedSession, setIsResumedSession] = useState(false);
+
   
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -40,14 +39,10 @@ export default function AssessmentPage() {
         previous: 'Previous',
         next: 'Next',
         finish: 'Finish Assessment',
-        saveExit: 'Save & Exit',
-        saving: 'Saving...',
+
         submitting: 'Submitting...',
         backToRole: 'Back to Role Selection',
         language: 'Language',
-        resumeNotice: 'Welcome back! Your assessment has been resumed.',
-        saveSuccess: 'Progress saved successfully!',
-        saveError: 'Failed to save progress. Please try again.',
         submitError: 'Failed to submit assessment. Please try again.',
         allQuestionsRequired: 'Please answer all questions before submitting.'
       },
@@ -64,14 +59,9 @@ export default function AssessmentPage() {
         previous: 'السابق',
         next: 'التالي',
         finish: 'إنهاء التقييم',
-        saveExit: 'حفظ والخروج',
-        saving: 'جاري الحفظ...',
         submitting: 'جاري الإرسال...',
         backToRole: 'العودة لاختيار الدور',
         language: 'اللغة',
-        resumeNotice: 'مرحباً بعودتك! تم استئناف تقييمك.',
-        saveSuccess: 'تم حفظ التقدم بنجاح!',
-        saveError: 'فشل في حفظ التقدم. يرجى المحاولة مرة أخرى.',
         submitError: 'فشل في إرسال التقييم. يرجى المحاولة مرة أخرى.',
         allQuestionsRequired: 'يرجى الإجابة على جميع الأسئلة قبل الإرسال.'
       }
@@ -204,16 +194,32 @@ export default function AssessmentPage() {
     sessionStorage.setItem('assessmentResponses', JSON.stringify(newResponses));
   };
 
-  const handleNext = () => {
-    if (currentQuestionIndex < questions.length - 1) {
-      const nextIndex = currentQuestionIndex + 1;
-      setCurrentQuestionIndex(nextIndex);
-      router.push(`/assessment?lang=${language}&role=${role}&question=${nextIndex}`);
-    } else {
-      // Last question - show submit
-      handleSubmitAssessment();
-    }
-  };
+const handleNext = async () => {
+  // Auto-save current response before proceeding
+  try {
+    await fetch('/api/save-responses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: sessionId,
+        responses: allResponses
+        // Note: Not including assessment code here - only on final submission
+      })
+    });
+  } catch (error) {
+    console.error('Auto-save error:', error);
+    // Continue anyway - don't block user progress
+  }
+
+  if (currentQuestionIndex < questions.length - 1) {
+    const nextIndex = currentQuestionIndex + 1;
+    setCurrentQuestionIndex(nextIndex);
+    router.push(`/assessment?lang=${language}&role=${role}&question=${nextIndex}`);
+  } else {
+    // Last question - show submit
+    handleSubmitAssessment();
+  }
+};
 
   const handlePrevious = () => {
     if (currentQuestionIndex > 0) {
@@ -223,41 +229,7 @@ export default function AssessmentPage() {
     }
   };
 
-  const handleSaveAndExit = async () => {
-    if (!sessionId) {
-      setError('Session not found');
-      return;
-    }
 
-    try {
-      setSaving(true);
-      
-      const response = await fetch('/api/save-responses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: sessionId,
-          responses: allResponses,
-          code: assessmentCode
-        })
-      });
-
-      const result = await response.json();
-      
-      if (result.success) {
-        // Show success message briefly then redirect
-        alert(getText('saveSuccess'));
-        router.push(`/?lang=${language}`);
-      } else {
-        setError(result.error || getText('saveError'));
-      }
-    } catch (error) {
-      console.error('Error saving responses:', error);
-      setError(getText('saveError'));
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const handleSubmitAssessment = async () => {
     // Check if all questions are answered
@@ -586,20 +558,8 @@ export default function AssessmentPage() {
               </Link>
             )}
 
-            {/* Center - Save & Exit Button */}
-            <button 
-              onClick={handleSaveAndExit}
-              disabled={saving || Object.keys(allResponses).length === 0}
-              className="btn-secondary"
-              style={{ 
-                fontSize: '0.9rem', 
-                padding: '10px 16px',
-                opacity: (saving || Object.keys(allResponses).length === 0) ? 0.5 : 1,
-                cursor: (saving || Object.keys(allResponses).length === 0) ? 'not-allowed' : 'pointer'
-              }}
-            >
-              {saving ? getText('saving') : getText('saveExit')}
-            </button>
+{/* Removed Save & Exit Button - Now empty space for better layout */}
+<div style={{ flex: 1 }}></div>
 
             {/* Next/Finish Button */}
             <button 
