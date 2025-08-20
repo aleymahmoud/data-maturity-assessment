@@ -111,17 +111,18 @@ export default function AssessmentPage() {
         }
       } else {
         // Regular flow - get stored session data
+        // 
         userData = sessionStorage.getItem('userData');
         selectedRole = sessionStorage.getItem('selectedRole');
         sessionCode = sessionStorage.getItem('assessmentCode');
-        
-        if (!userData || !selectedRole || !sessionCode) {
-          router.push(`/role-selection?lang=${language}`);
-          return;
-        }
+  
+          if (!userData || !selectedRole || !sessionCode) {
+            router.push(`/role-selection?lang=${language}`);
+            return;
+          }
 
-        setAssessmentCode(sessionCode);
-      }
+          setAssessmentCode(sessionCode);
+        }
 
       // Create or resume session
       const sessionResponse = await fetch('/api/session', {
@@ -129,9 +130,8 @@ export default function AssessmentPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           code: sessionCode,
-          userData: codeFromUrl ? null : JSON.parse(userData),
-          language: language,
-          resumeByCode: !!codeFromUrl
+          userData: JSON.parse(userData),
+          language: language
         })
       });
 
@@ -144,16 +144,6 @@ export default function AssessmentPage() {
 
       setSessionId(sessionData.sessionId);
       setUserId(sessionData.userId);
-      setIsResumedSession(sessionData.isResume);
-
-      // Load saved responses if resuming
-      if (sessionData.isResume && sessionData.savedResponses) {
-        setAllResponses(sessionData.savedResponses);
-        setCurrentQuestionIndex(sessionData.startQuestion || 0);
-        
-        // Update URL to correct question
-        router.push(`/assessment?lang=${language}&role=${role}&question=${sessionData.startQuestion || 0}`);
-      }
 
       // Fetch questions
       await fetchQuestions();
@@ -337,31 +327,7 @@ const handleNext = async () => {
             </span>
           </div>
 
-          {/* Resume Notice */}
-          {isResumedSession && (
-            <div className="assessment-card" style={{ 
-              marginBottom: '20px', 
-              backgroundColor: 'rgba(40, 167, 69, 0.1)',
-              borderLeft: language === 'ar' ? 'none' : '4px solid var(--success)',
-              borderRight: language === 'ar' ? '4px solid var(--success)' : 'none'
-            }}>
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '10px',
-                flexDirection: language === 'ar' ? 'row-reverse' : 'row'
-              }}>
-                <span style={{ fontSize: '1.2rem' }}>🔄</span>
-                <span style={{ 
-                  color: 'var(--success)', 
-                  fontWeight: '600',
-                  fontFamily: 'var(--font-primary)'
-                }}>
-                  {getText('resumeNotice')}
-                </span>
-              </div>
-            </div>
-          )}
+
 
           {/* Progress Section */}
           <div className="assessment-card" style={{ marginBottom: '30px' }}>

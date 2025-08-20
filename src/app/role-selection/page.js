@@ -29,7 +29,7 @@ export default function RoleSelectionPage() {
         rolesLabel: 'Roles:',
         focusLabel: 'Focus:',
         warningTitle: 'Important Warning',
-        warningText: 'If you close the assessment before answering all 35 questions, you will lose your progress and need to restart the assessment. Your assessment code will only be invalidated when you complete all questions.',
+        warningText: 'If you close the assessment before answering all 35 questions, you will lose your progress and need to restart the assessment.',
         roles: {
           executive: {
             title: 'Executive/C-Suite Level',
@@ -79,7 +79,7 @@ export default function RoleSelectionPage() {
         rolesLabel: 'الأدوار:',
         focusLabel: 'التركيز:',
         warningTitle: 'تحذير هام',
-        warningText: 'إذا أغلقت التقييم قبل الإجابة على جميع الأسئلة الـ 35، ستفقد تقدمك وستحتاج لبدء التقييم من جديد. سيصبح رمز التقييم الخاص بك غير صالح فقط عند إكمال جميع الأسئلة.',
+        warningText: 'إذا أغلقت التقييم قبل الإجابة على جميع الأسئلة الـ 35، ستفقد تقدمك وستحتاج لبدء التقييم من جديد',
         roles: {
           executive: {
             title: 'المستوى التنفيذي/كبار القادة',
@@ -286,34 +286,7 @@ export default function RoleSelectionPage() {
           </div>
 
 
-                          {/* Warning About Early Exit */}
-                <div className="assessment-card" style={{ 
-                  marginBottom: '30px', 
-                  backgroundColor: 'rgba(255, 193, 7, 0.1)',
-                  border: '1px solid rgba(255, 193, 7, 0.3)'
-                }}>
-                  <div style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '12px',
-                    flexDirection: language === 'ar' ? 'row-reverse' : 'row'
-                  }}>
-                    <span style={{ fontSize: '1.5rem' }}>⚠️</span>
-                    <div style={{ textAlign: language === 'ar' ? 'right' : 'left' }}>
-                      <p style={{ margin: '0', fontWeight: '500', fontFamily: 'var(--font-primary)' }}>
-                        <strong>{content.warningTitle}</strong>
-                      </p>
-                      <p style={{ 
-                        margin: '8px 0 0 0', 
-                        fontSize: '0.9rem', 
-                        color: 'var(--text-secondary)',
-                        fontFamily: 'var(--font-primary)'
-                      }}>
-                        {content.warningText}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+
 
           {/* Role Cards */}
           <div style={{ marginBottom: '40px' }}>
@@ -399,6 +372,38 @@ export default function RoleSelectionPage() {
               </div>
             ))}
           </div>
+
+
+                          {/* Warning About Early Exit */}
+                <div className="assessment-card" style={{ 
+                  marginBottom: '30px', 
+                  backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                  border: '1px solid rgba(255, 193, 7, 0.3)'
+                }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '12px',
+                    flexDirection: 'center'
+                  }}>
+                    <span style={{ fontSize: '1.5rem' }}>⚠️</span>
+                    <div style={{ textAlign: language === 'ar' ? 'right' : 'left' }}>
+                      <p style={{ margin: '0', fontWeight: '500', fontFamily: 'var(--font-primary)' }}>
+                        <strong>{content.warningTitle}</strong>
+                      </p>
+                      <p style={{ 
+                        margin: '8px 0 0 0', 
+                        fontSize: '0.9rem', 
+                        color: 'var(--text-secondary)',
+                        fontFamily: 'var(--font-primary)'
+                      }}>
+                        {content.warningText}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+
 
           {/* Continue Button */}
           <div style={{ textAlign: 'center', marginBottom: '30px' }}>
