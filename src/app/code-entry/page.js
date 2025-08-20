@@ -23,7 +23,9 @@ export default function CodeEntryPage() {
         codePlaceholder: 'Enter your code (e.g., DEMO1234)',
         continueButton: 'Continue',
         validatingButton: 'Validating...',
-        backLink: 'Back to Welcome'
+        backLink: 'Back to Welcome',
+        resumingAssessment: 'Resuming your assessment...',
+        redirectingToResults: 'Redirecting to your results...',
       },
       ar: {
         language: 'اللغة',
@@ -33,7 +35,9 @@ export default function CodeEntryPage() {
         codePlaceholder: 'أدخل الرمز الخاص بك (مثال: DEMO1234)',
         continueButton: 'متابعة',
         validatingButton: 'جاري التحقق...',
-        backLink: 'العودة للترحيب'
+        backLink: 'العودة للترحيب',
+        resumingAssessment: 'جاري استئناف تقييمك...',
+        redirectingToResults: 'جاري التوجيه إلى نتائجك...',
       }
     };
     return content[language];
@@ -41,41 +45,58 @@ export default function CodeEntryPage() {
 
   const content = getContent();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  setError('');
 
-    try {
-      const response = await fetch('/api/validate-code', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ code: code.trim().toUpperCase() }),
-      });
+  try {
+    const response = await fetch('/api/validate-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: assessmentCode })
+    });
 
-      const result = await response.json();
+    const result = await response.json();
 
-      if (result.success) {
-        // Store code data for next steps
-        sessionStorage.setItem('assessmentCode', code.trim().toUpperCase());
-        sessionStorage.setItem('organizationName', result.data.organizationName || '');
-        sessionStorage.setItem('intendedRecipient', result.data.intendedRecipient || '');
-        sessionStorage.setItem('language', language); // Store language
+    if (result.valid) {
+      // Store the assessment code
+      sessionStorage.setItem('assessmentCode', assessmentCode);
+
+      if (result.isCompleted) {
+        // Assessment is completed - redirect to results
+        sessionStorage.setItem('completedSessionId', result.sessionId);
+        sessionStorage.setItem('completedUserData', JSON.stringify(result.userData));
+        router.push(`/results?lang=${language}&session=${result.sessionId}`);
         
-        // Navigate to user info page with language
-        router.push(`/user-info?lang=${language}`);
+      } else if (result.hasUserData) {
+        // User data exists - resume assessment directly
+        const resumeData = result.resumeData;
+        
+        // Store resume data in session storage
+        sessionStorage.setItem('resumeData', JSON.stringify(resumeData));
+        sessionStorage.setItem('isResuming', 'true');
+        
+        // Redirect directly to assessment with resume parameters
+        router.push(`/assessment?lang=${resumeData.language}&resume=true&session=${resumeData.sessionId}`);
+        
       } else {
-        setError(result.error || 'Invalid assessment code');
+        // First time use - continue to user info
+        if (result.organizationName) {
+          sessionStorage.setItem('organizationName', result.organizationName);
+        }
+        router.push(`/user-info?lang=${language}`);
       }
-    } catch (error) {
-      console.error('Validation error:', error);
-      setError('Network error. Please try again.');
-    } finally {
-      setLoading(false);
+    } else {
+      setError(result.error || content.invalidCode);
     }
-  };
+  } catch (error) {
+    console.error('Validation error:', error);
+    setError(content.networkError);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className={`page-container ${language === 'ar' ? 'rtl' : ''}`}>

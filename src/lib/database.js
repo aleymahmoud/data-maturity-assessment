@@ -399,3 +399,56 @@ export async function getUnansweredQuestionsByCode(code) {
     return { success: false, error: 'Failed to retrieve unanswered questions' };
   }
 }
+
+// Get user data and session info by assessment code
+export async function getUserDataByCode(code) {
+  const database = await openDatabase();
+  
+  try {
+    const userData = await database.get(`
+      SELECT 
+        u.id as user_id,
+        u.name,
+        u.email,
+        u.organization,
+        u.role_title,
+        s.id as session_id,
+        s.status as session_status,
+        s.completion_percentage,
+        s.language_preference,
+        ac.is_used as code_is_used
+      FROM assessment_codes ac
+      LEFT JOIN audit_logs al ON al.details LIKE '%' || ac.code || '%'
+      LEFT JOIN assessment_sessions s ON al.details LIKE '%Session: ' || s.id || '%'
+      LEFT JOIN users u ON s.user_id = u.id
+      WHERE ac.code = ? AND s.status IN ('in_progress', 'completed')
+      ORDER BY s.session_start DESC
+      LIMIT 1
+    `, [code]);
+
+    if (!userData) {
+      return { success: true, hasUserData: false };
+    }
+
+    return {
+      success: true,
+      hasUserData: true,
+      userData: {
+        userId: userData.user_id,
+        name: userData.name,
+        email: userData.email,
+        organization: userData.organization,
+        roleTitle: userData.role_title,
+        sessionId: userData.session_id,
+        sessionStatus: userData.session_status,
+        completionPercentage: userData.completion_percentage,
+        language: userData.language_preference,
+        codeIsUsed: userData.code_is_used
+      }
+    };
+  } catch (error) {
+    console.error('Error getting user data by code:', error);
+    return { success: false, error: 'Failed to retrieve user data' };
+  }
+}
+

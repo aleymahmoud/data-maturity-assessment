@@ -15,6 +15,8 @@ export default function AssessmentPage() {
   const [sessionId, setSessionId] = useState('');
   const [userId, setUserId] = useState('');
   const [assessmentCode, setAssessmentCode] = useState('');
+  const [resumeUserData, setResumeUserData] = useState(null);
+  const [isResuming, setIsResuming] = useState(false);
 
   
   const router = useRouter();
@@ -39,7 +41,8 @@ export default function AssessmentPage() {
         previous: 'Previous',
         next: 'Next',
         finish: 'Finish Assessment',
-
+        welcomeBack: 'Welcome back',
+        continuingAssessment: 'Continuing your assessment from where you left off.',
         submitting: 'Submitting...',
         backToRole: 'Back to Role Selection',
         language: 'Language',
@@ -59,6 +62,8 @@ export default function AssessmentPage() {
         previous: 'السابق',
         next: 'التالي',
         finish: 'إنهاء التقييم',
+        welcomeBack: 'مرحباً بعودتك',
+        continuingAssessment: 'متابعة تقييمك من حيث توقفت.',
         submitting: 'جاري الإرسال...',
         backToRole: 'العودة لاختيار الدور',
         language: 'اللغة',
@@ -88,43 +93,80 @@ export default function AssessmentPage() {
     }
   }, [currentQuestionIndex, questions]);
 
-  const initializeAssessment = async () => {
-    try {
-      setLoading(true);
+const initializeAssessment = async () => {
+  try {
+    setLoading(true);
+    
+    // Check if we're resuming from code entry
+    const isResumingFromCode = searchParams.get('resume') === 'true';
+    const sessionIdFromUrl = searchParams.get('session');
+    
+    let sessionCode = '';
+    let userData = null;
+    let selectedRole = null;
+    
+    if (isResumingFromCode && sessionIdFromUrl) {
+      // Resuming from code entry - get stored resume data
+      const resumeDataStr = sessionStorage.getItem('resumeData');
       
-      // Check if we're resuming by code from the URL
-      const codeFromUrl = searchParams.get('code');
-      const questionNumberFromUrl = searchParams.get('question');
+      if (!resumeDataStr) {
+        router.push(`/code-entry?lang=${language}`);
+        return;
+      }
       
-      // Variables to store session data
-      let sessionCode = '';
-      let userData = null;
-      let selectedRole = null;
+      const resumeData = JSON.parse(resumeDataStr);
+      sessionCode = sessionStorage.getItem('assessmentCode');
       
-      if (codeFromUrl) {
-        // We're resuming by code
-        sessionCode = codeFromUrl;
-        setAssessmentCode(codeFromUrl);
-        
-        if (questionNumberFromUrl) {
-          setCurrentQuestionIndex(parseInt(questionNumberFromUrl));
-        }
-      } else {
-        // Regular flow - get stored session data
-        // 
-        userData = sessionStorage.getItem('userData');
-        selectedRole = sessionStorage.getItem('selectedRole');
-        sessionCode = sessionStorage.getItem('assessmentCode');
-  
-          if (!userData || !selectedRole || !sessionCode) {
-            router.push(`/role-selection?lang=${language}`);
-            return;
-          }
+      // Set resume state
+      setIsResuming(true);
+      setResumeUserData(resumeData.userData);
+      setSessionId(resumeData.sessionId);
+      setAssessmentCode(sessionCode);
+      
+      // Extract role from roleTitle for URL
+      const roleMapping = {
+        'CEO': 'executive',
+        'COO': 'executive', 
+        'CTO': 'executive',
+        'CDO': 'executive',
+        'VP Strategy': 'executive',
+        'IT Director': 'it-technology',
+        'Data Engineer': 'it-technology',
+        'System Admin': 'it-technology',
+        'Program Manager': 'operations',
+        'Operations Director': 'operations',
+        'Data Analyst': 'analytics',
+        'Business Intelligence': 'analytics',
+        'Researcher': 'analytics',
+        'Compliance Officer': 'compliance',
+        'Risk Manager': 'compliance',
+        'Legal': 'compliance'
+      };
+      
+      // Find role or default to 'executive'
+      const detectedRole = Object.keys(roleMapping).find(key => 
+        resumeData.userData.roleTitle.toLowerCase().includes(key.toLowerCase())
+      );
+      selectedRole = roleMapping[detectedRole] || 'executive';
+      
+      // Update URL to include role
+      router.replace(`/assessment?lang=${language}&role=${selectedRole}&question=0&resume=true&session=${sessionIdFromUrl}`);
+      
+    } else {
+      // Regular flow - get stored session data
+      userData = sessionStorage.getItem('userData');
+      selectedRole = sessionStorage.getItem('selectedRole');
+      sessionCode = sessionStorage.getItem('assessmentCode');
+      
+      if (!userData || !selectedRole || !sessionCode) {
+        router.push(`/role-selection?lang=${language}`);
+        return;
+      }
 
-          setAssessmentCode(sessionCode);
-        }
+      setAssessmentCode(sessionCode);
+      setIsResuming(false);
 
-      // Create or resume session
+      // Create fresh session
       const sessionResponse = await fetch('/api/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -144,17 +186,18 @@ export default function AssessmentPage() {
 
       setSessionId(sessionData.sessionId);
       setUserId(sessionData.userId);
-
-      // Fetch questions
-      await fetchQuestions();
-
-    } catch (error) {
-      console.error('Error initializing assessment:', error);
-      setError('Failed to initialize assessment');
-    } finally {
-      setLoading(false);
     }
-  };
+
+    // Fetch questions
+    await fetchQuestions();
+
+  } catch (error) {
+    console.error('Error initializing assessment:', error);
+    setError('Failed to initialize assessment');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const fetchQuestions = async () => {
     try {
@@ -326,6 +369,45 @@ const handleNext = async () => {
               {getText('language')}: {language === 'ar' ? 'العربية' : 'English'}
             </span>
           </div>
+
+                      {/* Welcome Back Message for Resume */}
+            {isResuming && resumeUserData && (
+              <div className="assessment-card" style={{ 
+                marginBottom: '20px', 
+                backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                borderLeft: language === 'ar' ? 'none' : '4px solid var(--success)',
+                borderRight: language === 'ar' ? '4px solid var(--success)' : 'none'
+              }}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '12px',
+                  flexDirection: language === 'ar' ? 'row-reverse' : 'row'
+                }}>
+                  <span style={{ fontSize: '1.5rem' }}>👋</span>
+                  <div style={{ textAlign: language === 'ar' ? 'right' : 'left' }}>
+                    <p style={{ 
+                      margin: '0', 
+                      fontWeight: '600', 
+                      color: 'var(--success)',
+                      fontFamily: 'var(--font-primary)'
+                    }}>
+                      {getText('welcomeBack')}, {resumeUserData.name}!
+                    </p>
+                    <p style={{ 
+                      margin: '5px 0 0 0', 
+                      fontSize: '0.9rem', 
+                      color: 'var(--text-secondary)',
+                      fontFamily: 'var(--font-primary)'
+                    }}>
+                      {getText('continuingAssessment')}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+
 
 
 
