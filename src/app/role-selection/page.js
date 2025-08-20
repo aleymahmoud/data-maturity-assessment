@@ -452,3 +452,27 @@ export default function RoleSelectionPage() {
     </div>
   );
 }
+
+
+useEffect(() => {
+  // Check if we're resuming - load existing user data
+  const resumeData = sessionStorage.getItem('resumeData');
+  if (resumeData) {
+    const data = JSON.parse(resumeData);
+    // Auto-detect role from roleTitle
+    const roleMapping = {
+      'CEO': 'executive',
+      'COO': 'executive', 
+      'CTO': 'executive',
+      // ... add all mappings
+    };
+    
+    const detectedRole = Object.keys(roleMapping).find(key => 
+      data.userData.roleTitle.toLowerCase().includes(key.toLowerCase())
+    );
+    
+    if (detectedRole) {
+      setSelectedRole(roleMapping[detectedRole]);
+    }
+  }
+}, []);

@@ -99,9 +99,9 @@ export async function createOrResumeSession(code, userData, language = 'en') {
     
     // Create new user
     await database.run(`
-      INSERT INTO users (id, name, organization, role_title, email, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-    `, [userId, userData.name, userData.organization, userData.roleTitle, userData.email]);
+      INSERT INTO users (id, name, organization, role_title, email, assessment_code, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    `, [userId, userData.name, userData.organization, userData.roleTitle, userData.email, code]);
 
     // Create new session
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -405,6 +405,7 @@ export async function getUserDataByCode(code) {
   const database = await openDatabase();
   
   try {
+    // Simple check: Look for user with this assessment code
     const userData = await database.get(`
       SELECT 
         u.id as user_id,
@@ -412,17 +413,17 @@ export async function getUserDataByCode(code) {
         u.email,
         u.organization,
         u.role_title,
+        u.assessment_code,
         s.id as session_id,
         s.status as session_status,
         s.completion_percentage,
         s.language_preference,
         ac.is_used as code_is_used
-      FROM assessment_codes ac
-      LEFT JOIN audit_logs al ON al.details LIKE '%' || ac.code || '%'
-      LEFT JOIN assessment_sessions s ON al.details LIKE '%Session: ' || s.id || '%'
-      LEFT JOIN users u ON s.user_id = u.id
-      WHERE ac.code = ? AND s.status IN ('in_progress', 'completed')
-      ORDER BY s.session_start DESC
+      FROM users u
+      JOIN assessment_codes ac ON u.assessment_code = ac.code
+      LEFT JOIN assessment_sessions s ON s.user_id = u.id
+      WHERE u.assessment_code = ?
+      ORDER BY u.created_at DESC
       LIMIT 1
     `, [code]);
 
@@ -440,9 +441,9 @@ export async function getUserDataByCode(code) {
         organization: userData.organization,
         roleTitle: userData.role_title,
         sessionId: userData.session_id,
-        sessionStatus: userData.session_status,
-        completionPercentage: userData.completion_percentage,
-        language: userData.language_preference,
+        sessionStatus: userData.session_status || 'not_started',
+        completionPercentage: userData.completion_percentage || 0,
+        language: userData.language_preference || 'en',
         codeIsUsed: userData.code_is_used
       }
     };
