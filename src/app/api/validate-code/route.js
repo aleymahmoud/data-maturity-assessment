@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { validateAssessmentCode, logAction } from '../../../lib/database.js';
 import { validateAssessmentCode, getUserDataByCode, logAction } from '../../../lib/database.js';
+
 export async function POST(request) {
   try {
     const { code } = await request.json();
