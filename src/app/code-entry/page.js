@@ -54,14 +54,14 @@ const handleSubmit = async (e) => {
     const response = await fetch('/api/validate-code', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: assessmentCode })
+      body: JSON.stringify({ code: code.trim().toUpperCase() })
     });
 
     const result = await response.json();
 
     if (result.valid) {
       // Store the assessment code
-      sessionStorage.setItem('assessmentCode', assessmentCode);
+      sessionStorage.setItem('assessmentCode', code.trim().toUpperCase());
 
       if (result.isCompleted) {
         // Assessment is completed - redirect to results
