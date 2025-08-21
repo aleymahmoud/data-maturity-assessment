@@ -142,15 +142,48 @@ export default function RoleSelectionPage() {
     }
   ];
 
-  useEffect(() => {
-    // Check if user came from user info
-    const userData = sessionStorage.getItem('userData');
+useEffect(() => {
+  // Check if user came from user info
+  const userData = sessionStorage.getItem('userData');
+  
+  if (!userData) {
+    router.push(`/user-info?lang=${language}`);
+    return;
+  }
+
+  // Check if we're resuming - load existing user data
+  const resumeData = sessionStorage.getItem('resumeData');
+  if (resumeData) {
+    const data = JSON.parse(resumeData);
+    // Auto-detect role from roleTitle
+    const roleMapping = {
+      'CEO': 'executive',
+      'COO': 'executive', 
+      'CTO': 'executive',
+      'CDO': 'executive',
+      'VP Strategy': 'executive',
+      'IT Director': 'it-technology',
+      'Data Engineer': 'it-technology',
+      'System Admin': 'it-technology',
+      'Program Manager': 'operations',
+      'Operations Director': 'operations',
+      'Data Analyst': 'analytics',
+      'Business Intelligence': 'analytics',
+      'Researcher': 'analytics',
+      'Compliance Officer': 'compliance',
+      'Risk Manager': 'compliance',
+      'Legal': 'compliance'
+    };
     
-    if (!userData) {
-      router.push(`/user-info?lang=${language}`);
-      return;
+    const detectedRole = Object.keys(roleMapping).find(key => 
+      data.userData.roleTitle.toLowerCase().includes(key.toLowerCase())
+    );
+    
+    if (detectedRole) {
+      setSelectedRole(roleMapping[detectedRole]);
     }
-  }, [router, language]);
+  }
+}, [router, language]);
 
   const handleRoleSelect = (roleId) => {
     setSelectedRole(roleId);
@@ -454,25 +487,3 @@ export default function RoleSelectionPage() {
 }
 
 
-useEffect(() => {
-  // Check if we're resuming - load existing user data
-  const resumeData = sessionStorage.getItem('resumeData');
-  if (resumeData) {
-    const data = JSON.parse(resumeData);
-    // Auto-detect role from roleTitle
-    const roleMapping = {
-      'CEO': 'executive',
-      'COO': 'executive', 
-      'CTO': 'executive',
-      // ... add all mappings
-    };
-    
-    const detectedRole = Object.keys(roleMapping).find(key => 
-      data.userData.roleTitle.toLowerCase().includes(key.toLowerCase())
-    );
-    
-    if (detectedRole) {
-      setSelectedRole(roleMapping[detectedRole]);
-    }
-  }
-}, []);
