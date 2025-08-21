@@ -58,24 +58,34 @@ export default function UserInfoPage() {
 
   const content = getContent();
 
-  useEffect(() => {
-    // Check if user came from code entry
-    const code = sessionStorage.getItem('assessmentCode');
-    const orgName = sessionStorage.getItem('organizationName');
-    
-    if (!code) {
-      router.push(`/code-entry?lang=${language}`);
-      return;
-    }
+useEffect(() => {
+  // Check if user came from code entry
+  const code = sessionStorage.getItem('assessmentCode');
+  const orgName = sessionStorage.getItem('organizationName');
+  
+  if (!code) {
+    router.push(`/code-entry?lang=${language}`);
+    return;
+  }
 
+  // Check if we're resuming - load existing user data
+  const resumeData = sessionStorage.getItem('resumeData');
+  if (resumeData) {
+    const data = JSON.parse(resumeData);
+    setFormData({
+      name: data.userData.name,
+      email: data.userData.email,
+      organization: data.userData.organization,
+      roleTitle: data.userData.roleTitle
+    });
+  } else if (orgName) {
     // Pre-fill organization if available
-    if (orgName) {
-      setFormData(prev => ({
-        ...prev,
-        organization: orgName
-      }));
-    }
-  }, [router, language]);
+    setFormData(prev => ({
+      ...prev,
+      organization: orgName
+    }));
+  }
+}, [router, language]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;

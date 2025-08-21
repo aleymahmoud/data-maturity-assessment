@@ -75,6 +75,7 @@ const handleSubmit = async (e) => {
         
         // Store resume data in session storage
         sessionStorage.setItem('resumeData', JSON.stringify(resumeData));
+        sessionStorage.setItem('userData', JSON.stringify(resumeData.userData));
         sessionStorage.setItem('isResuming', 'true');
         
         // Redirect directly to assessment with resume parameters

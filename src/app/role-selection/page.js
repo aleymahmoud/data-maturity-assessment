@@ -143,40 +143,56 @@ export default function RoleSelectionPage() {
   ];
 
 useEffect(() => {
-  // Check if user came from user info
+  // Check if user came from user info OR if we're resuming
   const userData = sessionStorage.getItem('userData');
+  const resumeData = sessionStorage.getItem('resumeData');
   
-  if (!userData) {
+  if (!userData && !resumeData) {
     router.push(`/user-info?lang=${language}`);
     return;
   }
 
-  // Check if we're resuming - load existing user data
-  const resumeData = sessionStorage.getItem('resumeData');
+  // Check if we're resuming - load existing user data and auto-select role
   if (resumeData) {
     const data = JSON.parse(resumeData);
-    // Auto-detect role from roleTitle
+    
+    // Complete role mapping
     const roleMapping = {
       'CEO': 'executive',
       'COO': 'executive', 
       'CTO': 'executive',
       'CDO': 'executive',
       'VP Strategy': 'executive',
+      'Chief': 'executive',
+      'President': 'executive',
       'IT Director': 'it-technology',
       'Data Engineer': 'it-technology',
       'System Admin': 'it-technology',
+      'System Administrator': 'it-technology',
+      'Infrastructure': 'it-technology',
+      'Technical': 'it-technology',
       'Program Manager': 'operations',
       'Operations Director': 'operations',
+      'Operations Manager': 'operations',
+      'Business Manager': 'operations',
+      'Product Manager': 'operations',
       'Data Analyst': 'analytics',
       'Business Intelligence': 'analytics',
+      'BI': 'analytics',
       'Researcher': 'analytics',
+      'Analytics': 'analytics',
+      'Data Scientist': 'analytics',
       'Compliance Officer': 'compliance',
       'Risk Manager': 'compliance',
-      'Legal': 'compliance'
+      'Legal': 'compliance',
+      'Privacy': 'compliance',
+      'Governance': 'compliance'
     };
     
+    // Find best matching role
+    const roleTitle = data.userData.roleTitle.toLowerCase();
     const detectedRole = Object.keys(roleMapping).find(key => 
-      data.userData.roleTitle.toLowerCase().includes(key.toLowerCase())
+      roleTitle.includes(key.toLowerCase())
     );
     
     if (detectedRole) {
