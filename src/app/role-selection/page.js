@@ -6,9 +6,13 @@ import Link from 'next/link';
 
 export default function RoleSelectionPage() {
   const [selectedRole, setSelectedRole] = useState('');
+  const [userId, setUserId] = useState(''); 
   const router = useRouter();
   const searchParams = useSearchParams();
   const language = searchParams.get('lang') || 'en';
+  
+
+
 
   // Language-specific content
   const getContent = () => {
@@ -142,70 +146,71 @@ export default function RoleSelectionPage() {
     }
   ];
 
-useEffect(() => {
-  // Check if user came from user info OR if we're resuming
-  const userData = sessionStorage.getItem('userData');
-  const resumeData = sessionStorage.getItem('resumeData');
-  
-  if (!userData && !resumeData) {
-    router.push(`/user-info?lang=${language}`);
-    return;
-  }
+      useEffect(() => {
+        // Check if user came from user info OR if we're resuming
+        const userData = sessionStorage.getItem('userData');
+        const resumeData = sessionStorage.getItem('resumeData');
+        
+        if (!userData && !resumeData) {
+          router.push(`/user-info?lang=${language}`);
+          return;
+        }
 
-  // Check if we're resuming - load existing user data and auto-select role
-  if (resumeData) {
-    const data = JSON.parse(resumeData);
-    
-    // Complete role mapping
-    const roleMapping = {
-      'CEO': 'executive',
-      'COO': 'executive', 
-      'CTO': 'executive',
-      'CDO': 'executive',
-      'VP Strategy': 'executive',
-      'Chief': 'executive',
-      'President': 'executive',
-      'IT Director': 'it-technology',
-      'Data Engineer': 'it-technology',
-      'System Admin': 'it-technology',
-      'System Administrator': 'it-technology',
-      'Infrastructure': 'it-technology',
-      'Technical': 'it-technology',
-      'Program Manager': 'operations',
-      'Operations Director': 'operations',
-      'Operations Manager': 'operations',
-      'Business Manager': 'operations',
-      'Product Manager': 'operations',
-      'Data Analyst': 'analytics',
-      'Business Intelligence': 'analytics',
-      'BI': 'analytics',
-      'Researcher': 'analytics',
-      'Analytics': 'analytics',
-      'Data Scientist': 'analytics',
-      'Compliance Officer': 'compliance',
-      'Risk Manager': 'compliance',
-      'Legal': 'compliance',
-      'Privacy': 'compliance',
-      'Governance': 'compliance'
-    };
-    
-    // Find best matching role
-    const roleTitle = data.userData.roleTitle.toLowerCase();
-    const detectedRole = Object.keys(roleMapping).find(key => 
-      roleTitle.includes(key.toLowerCase())
-    );
-    
-    if (detectedRole) {
-      setSelectedRole(roleMapping[detectedRole]);
+        // If resuming, get role from database
+        if (resumeData) {
+          const data = JSON.parse(resumeData);
+          setUserId(data.userData.userId); // Store userId for API calls
+          
+          // Use database stored role if available
+          if (data.userData.selectedRole) {
+            console.log('Using database stored role:', data.userData.selectedRole);
+            setSelectedRole(data.userData.selectedRole);
+          } else {
+            // Auto-detect only if no stored role
+            const roleTitle = data.userData.roleTitle.toLowerCase();
+            let detectedRole = 'executive'; // default
+            
+            // Your existing role detection logic here...
+            if (roleTitle.includes('ceo') || roleTitle.includes('chief executive')) {
+              detectedRole = 'executive';
+            }
+            // ... rest of detection logic
+            
+            console.log('Auto-detected role:', detectedRole);
+            setSelectedRole(detectedRole);
+          }
+        }
+      }, [router, language]);
+
+const handleRoleSelect = async (roleId) => {
+  setSelectedRole(roleId);
+  
+  // Store in sessionStorage for immediate use
+  sessionStorage.setItem('selectedRole', roleId);
+  
+  // Save to database if we have userId
+  if (userId) {
+    try {
+      const response = await fetch('/api/update-role', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: userId,
+          selectedRole: roleId
+        })
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        console.log('Role saved to database successfully');
+      } else {
+        console.error('Failed to save role to database:', result.error);
+      }
+    } catch (error) {
+      console.error('Error saving role to database:', error);
     }
   }
-}, [router, language]);
-
-  const handleRoleSelect = (roleId) => {
-    setSelectedRole(roleId);
-    // Store role selection
-    sessionStorage.setItem('selectedRole', roleId);
-  };
+};
 
   const handleContinue = () => {
     if (selectedRole) {

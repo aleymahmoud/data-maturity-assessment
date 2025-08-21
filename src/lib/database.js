@@ -97,11 +97,11 @@ export async function createOrResumeSession(code, userData, language = 'en') {
     // Always create new user and session (no resume logic)
     const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    // Create new user
-    await database.run(`
-      INSERT INTO users (id, name, organization, role_title, email, assessment_code, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-    `, [userId, userData.name, userData.organization, userData.roleTitle, userData.email, code]);
+      // Create new user
+      await database.run(`
+        INSERT INTO users (id, name, organization, role_title, email, assessment_code, selected_role, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      `, [userId, userData.name, userData.organization, userData.roleTitle, userData.email, code, userData.selectedRole || null]);
 
     // Create new session
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -128,6 +128,26 @@ export async function createOrResumeSession(code, userData, language = 'en') {
     return { success: false, error: 'Failed to create session' };
   }
 }
+
+
+// Update user's selected role
+export async function updateUserSelectedRole(userId, selectedRole) {
+  const database = await openDatabase();
+  
+  try {
+    await database.run(`
+      UPDATE users 
+      SET selected_role = ?, updated_at = datetime('now')
+      WHERE id = ?
+    `, [selectedRole, userId]);
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating user selected role:', error);
+    return { success: false, error: 'Failed to update selected role' };
+  }
+}
+
 
 // Mark code as used (called on assessment completion)
 export async function markCodeAsUsed(code, sessionId) {
@@ -407,19 +427,20 @@ export async function getUserDataByCode(code) {
   try {
     // Simple check: Look for user with this assessment code
     const userData = await database.get(`
-      SELECT 
-        u.id as user_id,
-        u.name,
-        u.email,
-        u.organization,
-        u.role_title,
-        u.assessment_code,
-        s.id as session_id,
-        s.status as session_status,
-        s.completion_percentage,
-        s.language_preference,
-        ac.is_used as code_is_used
-      FROM users u
+        SELECT 
+          u.id as user_id,
+          u.name,
+          u.email,
+          u.organization,
+          u.role_title,
+          u.assessment_code,
+          u.selected_role,
+          s.id as session_id,
+          s.status as session_status,
+          s.completion_percentage,
+          s.language_preference,
+          ac.is_used as code_is_used
+        FROM users u
       JOIN assessment_codes ac ON u.assessment_code = ac.code
       LEFT JOIN assessment_sessions s ON s.user_id = u.id
       WHERE u.assessment_code = ?
@@ -432,19 +453,20 @@ export async function getUserDataByCode(code) {
     }
 
     return {
-      success: true,
-      hasUserData: true,
-      userData: {
-        userId: userData.user_id,
-        name: userData.name,
-        email: userData.email,
-        organization: userData.organization,
-        roleTitle: userData.role_title,
-        sessionId: userData.session_id,
-        sessionStatus: userData.session_status || 'not_started',
-        completionPercentage: userData.completion_percentage || 0,
-        language: userData.language_preference || 'en',
-        codeIsUsed: userData.code_is_used
+        success: true,
+        hasUserData: true,
+        userData: {
+          userId: userData.user_id,
+          name: userData.name,
+          email: userData.email,
+          organization: userData.organization,
+          roleTitle: userData.role_title,
+          selectedRole: userData.selected_role, // Add this line
+          sessionId: userData.session_id,
+          sessionStatus: userData.session_status || 'not_started',
+          completionPercentage: userData.completion_percentage || 0,
+          language: userData.language_preference || 'en',
+          codeIsUsed: userData.code_is_used
       }
     };
   } catch (error) {
