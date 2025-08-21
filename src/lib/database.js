@@ -425,22 +425,22 @@ export async function getUserDataByCode(code) {
   const database = await openDatabase();
   
   try {
-    // Simple check: Look for user with this assessment code
+    // Complete query with all fields
     const userData = await database.get(`
-        SELECT 
-          u.id as user_id,
-          u.name,
-          u.email,
-          u.organization,
-          u.role_title,
-          u.assessment_code,
-          u.selected_role,
-          s.id as session_id,
-          s.status as session_status,
-          s.completion_percentage,
-          s.language_preference,
-          ac.is_used as code_is_used
-        FROM users u
+      SELECT 
+        u.id as user_id,
+        u.name,
+        u.email,
+        u.organization,
+        u.role_title,
+        u.assessment_code,
+        u.selected_role,
+        s.id as session_id,
+        s.status as session_status,
+        s.completion_percentage,
+        s.language_preference,
+        ac.is_used as code_is_used
+      FROM users u
       JOIN assessment_codes ac ON u.assessment_code = ac.code
       LEFT JOIN assessment_sessions s ON s.user_id = u.id
       WHERE u.assessment_code = ?
@@ -453,20 +453,20 @@ export async function getUserDataByCode(code) {
     }
 
     return {
-        success: true,
-        hasUserData: true,
-        userData: {
-          userId: userData.user_id,
-          name: userData.name,
-          email: userData.email,
-          organization: userData.organization,
-          roleTitle: userData.role_title,
-          selectedRole: userData.selected_role, // Add this line
-          sessionId: userData.session_id,
-          sessionStatus: userData.session_status || 'not_started',
-          completionPercentage: userData.completion_percentage || 0,
-          language: userData.language_preference || 'en',
-          codeIsUsed: userData.code_is_used
+      success: true,
+      hasUserData: true,
+      userData: {
+        userId: userData.user_id,
+        name: userData.name,
+        email: userData.email,
+        organization: userData.organization,
+        roleTitle: userData.role_title,
+        selectedRole: userData.selected_role,
+        sessionId: userData.session_id,
+        sessionStatus: userData.session_status || 'not_started',
+        completionPercentage: userData.completion_percentage || 0,
+        language: userData.language_preference || 'en',
+        codeIsUsed: userData.code_is_used
       }
     };
   } catch (error) {
