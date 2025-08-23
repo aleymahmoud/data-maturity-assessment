@@ -89,21 +89,36 @@ export async function validateAssessmentCode(code) {
 // FIND the createOrResumeSession function (around line 85-150)
 // REPLACE it with this simplified version:
 
-// Create fresh user session (no resume logic)
+// Create fresh user session (check for existing user first)
 export async function createOrResumeSession(code, userData, language = 'en') {
   const database = await openDatabase();
   
   try {
-    // Always create new user and session (no resume logic)
-    const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // First check if user already exists for this code
+    const existingUser = await database.get(`
+      SELECT id, selected_role_id FROM users WHERE assessment_code = ?
+      ORDER BY created_at DESC LIMIT 1
+    `, [code]);
+
+    let userId;
     
-      // Create new user
+    if (existingUser) {
+      // Use existing user
+      userId = existingUser.id;
+      console.log('Using existing user:', userId, 'with role:', existingUser.selected_role);
+    } else {
+      // Create new user only if none exists
+      userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
       await database.run(`
-        INSERT INTO users (id, name, organization, role_title, email, assessment_code, selected_role, created_at, updated_at)
+        INSERT INTO users (id, name, organization, role_title, email, assessment_code, selected_role_id, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
       `, [userId, userData.name, userData.organization, userData.roleTitle, userData.email, code, userData.selectedRole || null]);
+      
+      console.log('Created new user:', userId, 'with role:', userData.selectedRole);
+    }
 
-    // Create new session
+    // Create new session (always create new session, but reuse user)
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     await database.run(`
@@ -120,8 +135,8 @@ export async function createOrResumeSession(code, userData, language = 'en') {
       success: true, 
       sessionId: sessionId, 
       userId: userId, 
-      isResume: false,           // Always false
-      completionPercentage: 0    // Always 0
+      isResume: !!existingUser,  // True if user already existed
+      completionPercentage: 0
     };
   } catch (error) {
     console.error('Error creating session:', error);
@@ -137,7 +152,7 @@ export async function updateUserSelectedRole(userId, selectedRole) {
   try {
     await database.run(`
       UPDATE users 
-      SET selected_role = ?, updated_at = datetime('now')
+      SET selected_role_id = ?, updated_at = datetime('now')
       WHERE id = ?
     `, [selectedRole, userId]);
 
@@ -434,7 +449,7 @@ export async function getUserDataByCode(code) {
         u.organization,
         u.role_title,
         u.assessment_code,
-        u.selected_role,
+        u.selected_role_id,
         s.id as session_id,
         s.status as session_status,
         s.completion_percentage,
@@ -461,7 +476,7 @@ export async function getUserDataByCode(code) {
         email: userData.email,
         organization: userData.organization,
         roleTitle: userData.role_title,
-        selectedRole: userData.selected_role,
+        selectedRole: userData.selected_role_id,
         sessionId: userData.session_id,
         sessionStatus: userData.session_status || 'not_started',
         completionPercentage: userData.completion_percentage || 0,
@@ -475,3 +490,78 @@ export async function getUserDataByCode(code) {
   }
 }
 
+// Get final assessment results for a user
+export async function getAssessmentResults(userId, assessmentCode) {
+  const database = await openDatabase();
+  
+  try {
+    const result = await database.get(`
+      SELECT ar.*, u.name, u.email, r.name_en as role_name
+      FROM assessment_results ar
+      JOIN users u ON ar.user_id = u.id
+      LEFT JOIN roles r ON u.selected_role_id = r.id
+      WHERE ar.user_id = ? AND ar.assessment_code = ?
+    `, [userId, assessmentCode]);
+
+    return { success: true, result };
+  } catch (error) {
+    console.error('Error getting assessment results:', error);
+    return { success: false, error: 'Failed to retrieve results' };
+  }
+}
+
+// Calculate and store final results when assessment is complete
+export async function generateAssessmentResults(userId, assessmentCode) {
+  const database = await openDatabase();
+  
+  try {
+    // Get all responses for this user/code
+    const responses = await database.all(`
+      SELECT question_id, score_value
+      FROM user_responses ur
+      JOIN assessment_sessions s ON ur.session_id = s.id
+      WHERE s.user_id = ? AND ur.assessment_code = ?
+      AND score_value > 0
+    `, [userId, assessmentCode]);
+
+    if (responses.length === 0) {
+      return { success: false, error: 'No responses found' };
+    }
+
+    // Calculate overall score
+    const totalScore = responses.reduce((sum, r) => sum + r.score_value, 0);
+    const averageScore = totalScore / responses.length;
+    
+    // Determine maturity level
+    let maturityLevel = 'Initial';
+    if (averageScore >= 4.3) maturityLevel = 'Optimized';
+    else if (averageScore >= 3.5) maturityLevel = 'Advanced';
+    else if (averageScore >= 2.7) maturityLevel = 'Defined';
+    else if (averageScore >= 1.9) maturityLevel = 'Developing';
+
+    // Store results
+    const resultId = `result_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    await database.run(`
+      INSERT OR REPLACE INTO assessment_results (
+        id, user_id, assessment_code, overall_score, overall_maturity_level,
+        completion_date, total_questions_answered, results_data
+      ) VALUES (?, ?, ?, ?, ?, datetime('now'), ?, ?)
+    `, [resultId, userId, assessmentCode, averageScore, maturityLevel, responses.length, JSON.stringify({
+      responses: responses,
+      calculatedAt: new Date().toISOString()
+    })]);
+
+    return { 
+      success: true, 
+      results: {
+        overallScore: averageScore,
+        maturityLevel: maturityLevel,
+        questionsAnswered: responses.length
+      }
+    };
+  } catch (error) {
+    console.error('Error generating results:', error);
+    return { success: false, error: 'Failed to generate results' };
+  }
+}

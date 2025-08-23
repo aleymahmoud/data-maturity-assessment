@@ -123,64 +123,154 @@ export default function RoleSelectionPage() {
 
   const content = getContent();
 
-  const roles = [
-    {
-      id: 'executive',
-      ...content.roles.executive
-    },
-    {
-      id: 'it-technology',
-      ...content.roles['it-technology']
-    },
-    {
-      id: 'operations',
-      ...content.roles.operations
-    },
-    {
-      id: 'analytics',
-      ...content.roles.analytics
-    },
-    {
-      id: 'compliance',
-      ...content.roles.compliance
+const [roles, setRoles] = useState([]);
+const [rolesLoading, setRolesLoading] = useState(true);
+
+// Load roles from database
+useEffect(() => {
+  const loadRoles = async () => {
+    try {
+      setRolesLoading(true);
+      const response = await fetch(`/api/roles?lang=${language}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setRoles(data.roles);
+        console.log('Loaded roles from database:', data.roles);
+      } else {
+        console.error('Failed to load roles:', data.error);
+        // Fallback to hardcoded roles if database fails
+        setRoles(getDefaultRoles());
+      }
+    } catch (error) {
+      console.error('Error loading roles:', error);
+      setRoles(getDefaultRoles());
+    } finally {
+      setRolesLoading(false);
     }
-  ];
+  };
+  
+  loadRoles();
+}, [language]);
 
-      useEffect(() => {
-        // Check if user came from user info OR if we're resuming
-        const userData = sessionStorage.getItem('userData');
-        const resumeData = sessionStorage.getItem('resumeData');
-        
-        if (!userData && !resumeData) {
-          router.push(`/user-info?lang=${language}`);
-          return;
-        }
+// Fallback roles in case database fails
+const getDefaultRoles = () => [
+  {
+    id: 'executive',
+    name: language === 'ar' ? 'المستوى التنفيذي/كبار القادة' : 'Executive/C-Suite Level',
+    description: language === 'ar' ? 'الرئيس التنفيذي، مدير العمليات، مدير التكنولوجيا، نائب رئيس الاستراتيجية' : 'CEO, COO, CTO, CDO, VP Strategy',
+    focus: language === 'ar' ? 'اتخاذ القرارات الاستراتيجية والتوجيه' : 'Strategic decision-making and direction',
+    recommendations: language === 'ar' ? 'توصيات القيادة الاستراتيجية' : 'Strategic leadership recommendations'
+  },
+  // ... other default roles
+];
 
-        // If resuming, get role from database
-        if (resumeData) {
-          const data = JSON.parse(resumeData);
-          setUserId(data.userData.userId); // Store userId for API calls
-          
-          // Use database stored role if available
-          if (data.userData.selectedRole) {
-            console.log('Using database stored role:', data.userData.selectedRole);
-            setSelectedRole(data.userData.selectedRole);
-          } else {
-            // Auto-detect only if no stored role
-            const roleTitle = data.userData.roleTitle.toLowerCase();
-            let detectedRole = 'executive'; // default
-            
-            // Your existing role detection logic here...
-            if (roleTitle.includes('ceo') || roleTitle.includes('chief executive')) {
-              detectedRole = 'executive';
-            }
-            // ... rest of detection logic
-            
-            console.log('Auto-detected role:', detectedRole);
-            setSelectedRole(detectedRole);
-          }
-        }
-      }, [router, language]);
+useEffect(() => {
+  // Check if user came from user info OR if we're resuming
+  const userData = sessionStorage.getItem('userData');
+  const resumeData = sessionStorage.getItem('resumeData');
+  
+  if (!userData && !resumeData) {
+    router.push(`/user-info?lang=${language}`);
+    return;
+  }
+
+  // If resuming, get role from database
+  if (resumeData) {
+    const data = JSON.parse(resumeData);
+    setUserId(data.userData.userId); // Store userId for API calls
+    
+    console.log('Resume data selectedRole:', data.userData.selectedRole);
+    
+    // Use database stored role if available
+    if (data.userData.selectedRole) {
+      console.log('Using database stored role:', data.userData.selectedRole);
+      setSelectedRole(data.userData.selectedRole);
+      return; // ← IMPORTANT: Exit here, don't run auto-detection
+    } 
+    
+    // ONLY auto-detect if NO stored role exists
+    console.log('No stored role found, auto-detecting...');
+    const roleTitle = data.userData.roleTitle.toLowerCase();
+    let detectedRole = 'executive'; // default
+    
+    // Complete role detection logic
+    if (roleTitle.includes('ceo') || roleTitle.includes('chief executive') || 
+        roleTitle.includes('coo') || roleTitle.includes('chief operating') ||
+        roleTitle.includes('cto') || roleTitle.includes('chief technology') ||
+        roleTitle.includes('cdo') || roleTitle.includes('chief data') ||
+        roleTitle.includes('vp') || roleTitle.includes('vice president') ||
+        roleTitle.includes('president') || roleTitle.includes('executive director')) {
+      detectedRole = 'executive';
+    }
+    else if (roleTitle.includes('it director') || roleTitle.includes('data engineer') ||
+             roleTitle.includes('system admin') || roleTitle.includes('infrastructure') ||
+             roleTitle.includes('technical lead') || roleTitle.includes('software') ||
+             roleTitle.includes('devops') || roleTitle.includes('network')) {
+      detectedRole = 'it-technology';
+    }
+    else if (roleTitle.includes('data analyst') || roleTitle.includes('business intelligence') ||
+             roleTitle.includes('bi analyst') || roleTitle.includes('data scientist') ||
+             roleTitle.includes('researcher') || roleTitle.includes('analytics')) {
+      detectedRole = 'analytics';
+    }
+    else if (roleTitle.includes('program manager') || roleTitle.includes('operations') ||
+             roleTitle.includes('product manager') || roleTitle.includes('business manager') ||
+             roleTitle.includes('project manager')) {
+      detectedRole = 'operations';
+    }
+    else if (roleTitle.includes('compliance') || roleTitle.includes('risk') ||
+             roleTitle.includes('legal') || roleTitle.includes('privacy') ||
+             roleTitle.includes('governance') || roleTitle.includes('audit')) {
+      detectedRole = 'compliance';
+    }
+    
+    console.log('Auto-detected role:', detectedRole);
+    setSelectedRole(detectedRole);
+  } else {
+    // Normal flow - no userId available yet for role storage
+    console.log('Normal flow - no userId available yet for role storage');
+  }
+}, [router, language]);
+
+
+// Temporary debug - add this after your existing useEffect
+useEffect(() => {
+  console.log('=== ROLE SELECTION DEBUG ===');
+  console.log('userId state:', userId);
+  console.log('selectedRole state:', selectedRole);
+  console.log('sessionStorage userData:', sessionStorage.getItem('userData'));
+  console.log('sessionStorage resumeData:', sessionStorage.getItem('resumeData'));
+}, [userId, selectedRole]);
+
+
+
+// Load roles from database
+useEffect(() => {
+  const loadRoles = async () => {
+    try {
+      setRolesLoading(true);
+      const response = await fetch(`/api/roles?lang=${language}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setRoles(data.roles);
+        console.log('Loaded roles from database:', data.roles);
+      } else {
+        console.error('Failed to load roles:', data.error);
+        setRoles([]);
+      }
+    } catch (error) {
+      console.error('Error loading roles:', error);
+      setRoles([]);
+    } finally {
+      setRolesLoading(false);
+    }
+  };
+  
+  loadRoles();
+}, [language]);
+
 
 const handleRoleSelect = async (roleId) => {
   setSelectedRole(roleId);
@@ -212,12 +302,23 @@ const handleRoleSelect = async (roleId) => {
   }
 };
 
-  const handleContinue = () => {
-    if (selectedRole) {
-      // Navigate to assessment with language and role
-      router.push(`/assessment?lang=${language}&role=${selectedRole}&question=0`);
-    }
-  };
+const handleContinue = async () => {
+  if (selectedRole) {
+    // Store role in sessionStorage for immediate use
+    sessionStorage.setItem('selectedRole', selectedRole);
+    
+    // IMPORTANT: Also store in userData so it gets passed to session creation
+    const userData = JSON.parse(sessionStorage.getItem('userData') || '{}');
+    userData.selectedRole = selectedRole;
+    sessionStorage.setItem('userData', JSON.stringify(userData));
+    
+    console.log('Stored selectedRole in userData:', selectedRole);
+    console.log('Updated userData:', userData);
+    
+    // Navigate to assessment with language and role
+    router.push(`/assessment?lang=${language}&role=${selectedRole}&question=0`);
+  }
+};
 
   return (
     <div className={`page-container ${language === 'ar' ? 'rtl' : ''}`}>
@@ -342,90 +443,96 @@ const handleRoleSelect = async (roleId) => {
 
 
 
-          {/* Role Cards */}
-          <div style={{ marginBottom: '40px' }}>
-            {roles.map((role) => (
-              <div
-                key={role.id}
-                className={`role-card ${selectedRole === role.id ? 'selected' : ''}`}
-                onClick={() => handleRoleSelect(role.id)}
-                style={{
-                  marginBottom: '16px',
-                  cursor: 'pointer',
-                  border: selectedRole === role.id ? '2px solid var(--primary-navy)' : '2px solid transparent',
-                  backgroundColor: selectedRole === role.id ? 'rgba(15, 44, 105, 0.05)' : 'white',
-                  direction: language === 'ar' ? 'rtl' : 'ltr'
-                }}
-              >
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '15px',
-                  flexDirection: language === 'ar' ? 'row-reverse' : 'row'
-                }}>
-                  <div style={{
-                    width: '20px',
-                    height: '20px',
-                    borderRadius: '50%',
-                    border: '2px solid var(--primary-navy)',
-                    backgroundColor: selectedRole === role.id ? 'var(--primary-navy)' : 'transparent',
-                    flexShrink: 0,
-                    order: language === 'ar' ? 2 : 1
-                  }}>
-                    {selectedRole === role.id && (
-                      <div style={{
-                        width: '8px',
-                        height: '8px',
-                        backgroundColor: 'white',
-                        borderRadius: '50%',
-                        margin: '4px auto'
-                      }} />
-                    )}
-                  </div>
-                  
-                  <div style={{ 
-                    flex: 1,
-                    order: language === 'ar' ? 1 : 2,
-                    textAlign: language === 'ar' ? 'right' : 'left'
-                  }}>
-                    <h3 style={{ 
-                      marginBottom: '8px', 
-                      color: 'var(--primary-navy)',
-                      fontSize: '1.2rem',
-                      fontFamily: 'var(--font-primary)'
-                    }}>
-                      🏢 {role.title}
-                    </h3>
-                    <p style={{ 
-                      marginBottom: '4px', 
-                      color: 'var(--text-dark)',
-                      fontSize: '0.95rem',
-                      fontFamily: 'var(--font-primary)'
-                    }}>
-                      <strong>{content.rolesLabel}</strong> {role.description}
-                    </p>
-                    <p style={{ 
-                      marginBottom: '4px', 
-                      color: 'var(--text-secondary)',
-                      fontSize: '0.9rem',
-                      fontFamily: 'var(--font-primary)'
-                    }}>
-                      <strong>{content.focusLabel}</strong> {role.focus}
-                    </p>
-                    <p style={{ 
-                      margin: '0', 
-                      color: 'var(--accent-orange)',
-                      fontSize: '0.9rem',
-                      fontWeight: '500',
-                      fontFamily: 'var(--font-primary)'
-                    }}>
-                      🎯 {role.recommendations}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
+{/* Role Cards */}
+<div style={{ marginBottom: '40px' }}>
+  {rolesLoading ? (
+    <div style={{ textAlign: 'center', padding: '40px' }}>
+      <p>{language === 'ar' ? 'جاري تحميل الأدوار...' : 'Loading roles...'}</p>
+    </div>
+  ) : (
+    roles.map((role) => (
+      <div
+        key={role.id}
+        className={`role-card ${selectedRole === role.id ? 'selected' : ''}`}
+        onClick={() => handleRoleSelect(role.id)}
+        style={{
+          marginBottom: '16px',
+          cursor: 'pointer',
+          border: selectedRole === role.id ? '2px solid var(--primary-navy)' : '2px solid transparent',
+          backgroundColor: selectedRole === role.id ? 'rgba(15, 44, 105, 0.05)' : 'white',
+          direction: language === 'ar' ? 'rtl' : 'ltr'
+        }}
+      >
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '15px',
+          flexDirection: language === 'ar' ? 'row-reverse' : 'row'
+        }}>
+          <div style={{
+            width: '20px',
+            height: '20px',
+            borderRadius: '50%',
+            border: '2px solid var(--primary-navy)',
+            backgroundColor: selectedRole === role.id ? 'var(--primary-navy)' : 'transparent',
+            flexShrink: 0,
+            order: language === 'ar' ? 2 : 1
+          }}>
+            {selectedRole === role.id && (
+              <div style={{
+                width: '8px',
+                height: '8px',
+                backgroundColor: 'white',
+                borderRadius: '50%',
+                margin: '4px auto'
+              }} />
+            )}
           </div>
+          
+          <div style={{ 
+            flex: 1,
+            order: language === 'ar' ? 1 : 2,
+            textAlign: language === 'ar' ? 'right' : 'left'
+          }}>
+            <h3 style={{ 
+              marginBottom: '8px', 
+              color: 'var(--primary-navy)',
+              fontSize: '1.2rem',
+              fontFamily: 'var(--font-primary)'
+            }}>
+              🏢 {role.name}
+            </h3>
+            <p style={{ 
+              marginBottom: '4px', 
+              color: 'var(--text-dark)',
+              fontSize: '0.95rem',
+              fontFamily: 'var(--font-primary)'
+            }}>
+              <strong>{content.rolesLabel}</strong> {role.description}
+            </p>
+            <p style={{ 
+              marginBottom: '4px', 
+              color: 'var(--text-secondary)',
+              fontSize: '0.9rem',
+              fontFamily: 'var(--font-primary)'
+            }}>
+              <strong>{content.focusLabel}</strong> {role.focus}
+            </p>
+            <p style={{ 
+              margin: '0', 
+              color: 'var(--accent-orange)',
+              fontSize: '0.9rem',
+              fontWeight: '500',
+              fontFamily: 'var(--font-primary)'
+            }}>
+              🎯 {role.recommendations}
+            </p>
+          </div>
+        </div>
+      </div>
+    ))
+  )}
+</div>
 
 
                           {/* Warning About Early Exit */}
@@ -507,4 +614,16 @@ const handleRoleSelect = async (roleId) => {
   );
 }
 
-
+// Add this function to role selection page
+const loadRolesFromDatabase = async () => {
+  try {
+    const response = await fetch('/api/roles');
+    const data = await response.json();
+    if (data.success) {
+      return data.roles;
+    }
+  } catch (error) {
+    console.error('Error loading roles:', error);
+  }
+  return []; // fallback to empty array
+};
