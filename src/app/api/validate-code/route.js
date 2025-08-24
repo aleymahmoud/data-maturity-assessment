@@ -62,7 +62,9 @@ export async function POST(request) {
               name: userData.name,
               email: userData.email,
               organization: userData.organization,
-              roleTitle: userData.roleTitle
+              roleTitle: userData.roleTitle,
+              selectedRole: userData.selectedRole,  
+              userId: userData.userId
             }
           }
         });

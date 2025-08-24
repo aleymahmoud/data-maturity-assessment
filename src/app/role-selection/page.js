@@ -178,6 +178,7 @@ useEffect(() => {
   // If resuming, get role from database
   if (resumeData) {
     const data = JSON.parse(resumeData);
+    console.log('FULL resumeData contents:', data.userData);
     setUserId(data.userData.userId); // Store userId for API calls
     
     console.log('Resume data selectedRole:', data.userData.selectedRole);
@@ -307,13 +308,20 @@ const handleContinue = async () => {
     // Store role in sessionStorage for immediate use
     sessionStorage.setItem('selectedRole', selectedRole);
     
-    // IMPORTANT: Also store in userData so it gets passed to session creation
-    const userData = JSON.parse(sessionStorage.getItem('userData') || '{}');
-    userData.selectedRole = selectedRole;
-    sessionStorage.setItem('userData', JSON.stringify(userData));
+    // CRITICAL FIX: Only update userData for NEW users, not returning users
+    const resumeData = sessionStorage.getItem('resumeData');
     
-    console.log('Stored selectedRole in userData:', selectedRole);
-    console.log('Updated userData:', userData);
+    if (!resumeData) {
+      // NEW USER: Store in userData so it gets passed to session creation
+      const userData = JSON.parse(sessionStorage.getItem('userData') || '{}');
+      userData.selectedRole = selectedRole;
+      sessionStorage.setItem('userData', JSON.stringify(userData));
+      
+      console.log('NEW USER: Stored selectedRole in userData:', selectedRole);
+    } else {
+      // RETURNING USER: Don't update userData, role already saved to database
+      console.log('RETURNING USER: Role already saved to database, not updating userData');
+    }
     
     // Navigate to assessment with language and role
     router.push(`/assessment?lang=${language}&role=${selectedRole}&question=0`);
