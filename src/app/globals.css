@@ -22,10 +22,10 @@
   --info: #7f7afe;
   
   /* Typography */
-  --font-primary: 'Montserrat';
-  --font-body: 'Georgia', serif;
-  --font-mono: 'Source Code Pro', monospace;
-  --font-arabic: 'Montserrat', sans-serif;
+  --font-primary: 'Montserrat', 'Noto Sans Arabic', sans-serif;
+  --font-body: 'Montserrat', 'Noto Sans Arabic', sans-serif;
+  --font-mono: 'Montserrat', 'Noto Sans Arabic', sans-serif;
+  --font-arabic: 'Montserrat', 'Noto Sans Arabic', sans-serif;
 }
 
 /* Reset and Base Styles */
@@ -185,7 +185,25 @@ p {
 .rtl {
   direction: rtl;
   text-align: right;
-  font-family: var(--font-primary); /* Use Montserrat for RTL too */
+  font-family: var(--font-primary) !important; /* Force Montserrat for all RTL text */
+}
+
+.rtl * {
+  font-family: var(--font-primary) !important; /* Force Montserrat for all RTL child elements */
+}
+
+/* Form Elements Font Support */
+select, option, input, textarea {
+  font-family: var(--font-primary) !important;
+}
+
+select option {
+  font-family: var(--font-primary) !important;
+}
+
+/* Ensure Arabic text in form elements uses Montserrat */
+.rtl select, .rtl option, .rtl input, .rtl textarea {
+  font-family: var(--font-primary) !important;
 }
 
 .rtl .assessment-card {

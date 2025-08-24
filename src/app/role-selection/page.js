@@ -363,7 +363,8 @@ const handleContinue = async () => {
                     marginLeft: language === 'ar' ? '0' : '8px',
                     marginRight: language === 'ar' ? '8px' : '0',
                     fontSize: '1.1rem', 
-                    fontWeight: '500' 
+                    fontWeight: '500' ,
+                    fontFamily: 'var(--font-primary)'
                   }}>
                     {language === 'ar' ? 'العربية (Arabic)' : 'English'}
                   </span>
@@ -375,9 +376,9 @@ const handleContinue = async () => {
                 gap: '10px',
                 flexDirection: language === 'ar' ? 'row-reverse' : 'row'
               }}>
-                <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-primary)' }}>
                   {content.changeLanguage}
-                </span>
+                  </span>
                 <select 
                   value={language} 
                   onChange={(e) => {

@@ -323,9 +323,9 @@ const handleNext = async () => {
       <div className="page-container">
         <div className="container">
           <div style={{ textAlign: 'center', paddingTop: '100px' }}>
-            <div style={{ fontSize: '1.2rem', color: 'var(--text-secondary)' }}>
+            <div style={{ fontSize: '1.2rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-primary)' }}>
               {getText('loading')}
-            </div>
+              </div>
           </div>
         </div>
       </div>
@@ -340,7 +340,7 @@ const handleNext = async () => {
             <h2 style={{ color: 'var(--danger)', marginBottom: '20px' }}>
               {getText('error')}
             </h2>
-            <p style={{ marginBottom: '30px', color: 'var(--text-secondary)' }}>
+            <p style={{ marginBottom: '30px', color: 'var(--text-secondary)', fontFamily: 'var(--font-primary)' }}>
               {error || getText('error')}
             </p>
             <button onClick={initializeAssessment} className="btn-primary">
@@ -424,9 +424,9 @@ const handleNext = async () => {
                 <span style={{ fontFamily: 'var(--font-primary)', fontWeight: '600' }}>
                   {getText('progress')}: {getProgressPercentage()}% {getText('complete')}
                 </span>
-                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontFamily: 'var(--font-primary)' }}>
                   {getAnsweredCount()} {getText('of')} {questions.length} {getText('answered')}
-                </span>
+                  </span>
               </div>
               
               <div className="progress-bar">
