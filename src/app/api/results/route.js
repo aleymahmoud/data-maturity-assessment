@@ -40,22 +40,22 @@ export async function GET(request) {
     }
 
     // Get ALL subdomains (assessed and unassessed)
-    const allSubdomains = await database.all(`
-      SELECT 
-        sd.id,
-        sd.name_${language} as name,
-        sd.description_${language} as description,
-        sd.display_order,
-        COALESCE(s.raw_score, 0) as score,
-        COALESCE(s.percentage_score, 0) as percentage,
-        COALESCE(s.questions_answered, 0) as questions_answered,
-        COALESCE(s.total_questions, 0) as total_questions
-      FROM subdomains sd
-      LEFT JOIN session_scores s ON sd.id = s.subdomain_id 
-        AND s.session_id = ? 
-        AND s.score_type = 'subdomain'
-      ORDER BY sd.display_order
-    `, [sessionId]);
+      const allSubdomains = await database.all(`
+        SELECT 
+          sd.id,
+          sd.name_${language} as name,
+          sd.description_${language} as description,
+          sd.display_order,
+          COALESCE(s.raw_score, 0) as score,
+          COALESCE(s.percentage_score, 0) as percentage,
+          COALESCE(s.questions_answered, 0) as questions_answered,
+          COALESCE(s.total_questions, 0) as total_questions
+        FROM subdomains sd
+        LEFT JOIN session_scores s ON sd.id = s.subdomain_id 
+          AND s.session_id = ? 
+          AND s.score_type = 'subdomain'
+        ORDER BY sd.display_order
+      `, [sessionId]);
 
     // Calculate overall score including zeros for unassessed domains
     const totalScore = allSubdomains.reduce((sum, domain) => sum + domain.score, 0);
