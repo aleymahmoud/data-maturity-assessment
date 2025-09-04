@@ -1,11 +1,11 @@
 'use client';
 
-
+import { Suspense } from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-export default function AssessmentPage() {
+function AssessmentPageContent() {
   const [questions, setQuestions] = useState([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [allResponses, setAllResponses] = useState({});
@@ -630,5 +630,13 @@ const handleNext = async () => {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AssessmentPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <AssessmentPageContent />
+    </Suspense>
   );
 }

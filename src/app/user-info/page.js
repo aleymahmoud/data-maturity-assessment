@@ -1,10 +1,10 @@
 'use client';
-
+import { Suspense } from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-export default function UserInfoPage() {
+function UserInfoPageContent() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -337,5 +337,13 @@ useEffect(() => {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function UserInfoPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <UserInfoPageContent />
+    </Suspense>
   );
 }

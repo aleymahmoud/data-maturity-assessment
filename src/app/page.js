@@ -1,9 +1,9 @@
 'use client';
-
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { useState } from 'react';
 
-export default function HomePage() {
+function HomePageContent() {
   const [language, setLanguage] = useState('en');
 
   // Language-specific content
@@ -194,5 +194,13 @@ export default function HomePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <HomePageContent />
+    </Suspense>
   );
 }

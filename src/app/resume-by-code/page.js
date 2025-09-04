@@ -1,10 +1,10 @@
 'use client';
-
+import { Suspense } from 'react';
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-export default function ResumeByCodePage() {
+function ResumeByCodePageContent() {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -122,5 +122,13 @@ export default function ResumeByCodePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ResumeByCodePage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ResumeByCodePageContent />
+    </Suspense>
   );
 }

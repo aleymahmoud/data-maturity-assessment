@@ -1,8 +1,10 @@
 'use client';
+import { Suspense } from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function ResultsPage() {
+// Component that uses useSearchParams - this will be wrapped in Suspense
+function ResultsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [language, setLanguage] = useState('en');
@@ -618,5 +620,14 @@ export default function ResultsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Main component with Suspense wrapper - this is what gets exported
+export default function ResultsPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ResultsPageContent />
+    </Suspense>
   );
 }

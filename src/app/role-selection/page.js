@@ -1,10 +1,10 @@
 'use client';
-
+import { Suspense } from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-export default function RoleSelectionPage() {
+function RoleSelectionPageContent() {
   const [selectedRole, setSelectedRole] = useState('');
   const [userId, setUserId] = useState(''); 
   const router = useRouter();
@@ -636,3 +636,11 @@ const loadRolesFromDatabase = async () => {
   }
   return []; // fallback to empty array
 };
+
+export default function RoleSelectionPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <RoleSelectionPageContent />
+    </Suspense>
+  );
+}
