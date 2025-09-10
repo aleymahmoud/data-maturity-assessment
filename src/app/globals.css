@@ -1,5 +1,4 @@
-/* Import Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap');
+/* Enhanced Mobile-First Responsive Design for Data Maturity Assessment App */
 
 :root {
   /* Primary Colors */
@@ -21,131 +20,122 @@
   --danger: #dc3545;
   --info: #7f7afe;
   
-  /* Typography */
-  --font-primary: 'Montserrat', 'Noto Sans Arabic', sans-serif;
-  --font-body: 'Montserrat', 'Noto Sans Arabic', sans-serif;
-  --font-mono: 'Montserrat', 'Noto Sans Arabic', sans-serif;
-  --font-arabic: 'Montserrat', 'Noto Sans Arabic', sans-serif;
+  /* Typography - Mobile First */
+  --font-primary: 'Montserrat', sans-serif;
+  --font-body: 'Georgia', serif;
+  --font-mono: 'Source Code Pro', monospace;
+  
+  /* Responsive Spacing - Mobile First */
+  --spacing-xs: 8px;
+  --spacing-sm: 12px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  
+  /* Touch Target Minimums */
+  --touch-target-min: 44px;
+  --button-height-mobile: 48px;
+  --input-height-mobile: 48px;
 }
 
-/* Reset and Base Styles */
+/* RESET & BASE STYLES - Mobile First */
 * {
-  box-sizing: border-box;
-  padding: 0;
   margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-html,
+html {
+  font-size: 16px; /* Base font size for mobile */
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
-  max-width: 100vw;
-  overflow-x: hidden;
-  font-family: var(--font-primary); /* Changed from var(--font-body) to Montserrat */
-  color: var(--text-dark);
-  background-color: var(--white);
-}
-
-/* Force Montserrat on all elements */
-* {
-  font-family: var(--font-primary) !important;
-}
-
-/* Typography Hierarchy */
-h1 {
   font-family: var(--font-primary);
-  font-size: 2.5rem;
-  font-weight: 700;
+  line-height: 1.5;
   color: var(--text-primary);
-  margin-bottom: 1rem;
+  background-color: var(--white);
+  overflow-x: hidden;
+}
+
+/* TYPOGRAPHY - Mobile First */
+h1 {
+  font-size: 1.75rem; /* 28px mobile */
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: var(--spacing-sm);
+  color: var(--text-primary);
+  font-family: var(--font-primary);
 }
 
 h2 {
-  font-family: var(--font-primary);
-  font-size: 2rem;
+  font-size: 1.5rem; /* 24px mobile */
   font-weight: 600;
+  line-height: 1.3;
+  margin-bottom: var(--spacing-sm);
   color: var(--text-primary);
-  margin-bottom: 0.75rem;
+  font-family: var(--font-primary);
 }
 
 h3 {
-  font-family: var(--font-primary);
-  font-size: 1.5rem;
-  font-weight: 500;
+  font-size: 1.25rem; /* 20px mobile */
+  font-weight: 600;
+  line-height: 1.4;
+  margin-bottom: var(--spacing-xs);
   color: var(--text-primary);
-  margin-bottom: 0.5rem;
+  font-family: var(--font-primary);
 }
 
-/* Override paragraphs to use Montserrat */
 p {
-  font-family: var(--font-primary);
   font-size: 1rem;
   line-height: 1.6;
-  margin-bottom: 1rem;
+  margin-bottom: var(--spacing-sm);
+  color: var(--text-dark);
 }
 
-/* Button Styles */
-.btn-primary {
-  background: linear-gradient(135deg, var(--primary-navy), var(--secondary-blue));
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-family: var(--font-primary);
-  font-weight: 600;
-  cursor: pointer;
-  text-decoration: none;
-  display: inline-block;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+/* LAYOUT CONTAINERS - Mobile First */
+.container {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0 var(--spacing-md);
 }
 
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(15, 44, 105, 0.3);
+.page-container {
+  min-height: 100vh;
+  padding: var(--spacing-md) 0;
+  width: 100%;
 }
 
-.btn-secondary {
-  background: var(--accent-orange);
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 6px;
-  font-family: var(--font-primary);
-  font-weight: 600;
-  cursor: pointer;
-  text-decoration: none;
-  display: inline-block;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.btn-secondary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(245, 173, 46, 0.3);
-}
-
-/* Card Styles */
-.assessment-card {
-  background: var(--white);
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(15, 44, 105, 0.1);
-  padding: 24px;
-  margin-bottom: 20px;
-  border-left: 4px solid var(--primary-navy);
-}
-
+/* CARDS - Mobile First */
+.assessment-card,
 .role-card {
   background: var(--white);
   border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(15, 44, 105, 0.1);
-  padding: 20px;
-  margin-bottom: 16px;
-  border: 2px solid transparent;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  box-shadow: 0 2px 12px rgba(15, 44, 105, 0.08);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  border-left: 4px solid var(--primary-navy);
+  width: 100%;
 }
 
-.role-card:hover {
+.role-card {
+  border: 2px solid var(--light-gray);
+  border-left: 4px solid var(--light-gray);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: var(--touch-target-min);
+  display: flex;
+  align-items: center;
+}
+
+.role-card:hover,
+.role-card:focus {
   border-color: var(--secondary-blue);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 25px rgba(15, 44, 105, 0.15);
+  box-shadow: 0 4px 16px rgba(15, 44, 105, 0.12);
+  transform: translateY(-1px);
 }
 
 .role-card.selected {
@@ -153,26 +143,136 @@ p {
   background: linear-gradient(135deg, rgba(15, 44, 105, 0.05), rgba(127, 122, 254, 0.05));
 }
 
-/* Container and Layout */
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
+/* BUTTONS - Mobile First */
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary-navy), var(--secondary-blue));
+  color: white;
+  border: none;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: 8px;
+  font-family: var(--font-primary);
+  font-weight: 600;
+  font-size: 1rem;
+  min-height: var(--button-height-mobile);
+  width: 100%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
 }
 
-.page-container {
-  min-height: 100vh;
-  padding: 20px 0;
+.btn-secondary {
+  background: var(--accent-orange);
+  color: white;
+  border: none;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: 6px;
+  font-family: var(--font-primary);
+  font-weight: 500;
+  font-size: 1rem;
+  min-height: var(--button-height-mobile);
+  width: 100%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
 }
 
-/* Progress Bar */
+.btn-primary:hover,
+.btn-primary:focus {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(15, 44, 105, 0.3);
+}
+
+.btn-secondary:hover,
+.btn-secondary:focus {
+  background: #e09a2a;
+  transform: translateY(-1px);
+}
+
+/* FORM ELEMENTS - Mobile First */
+input[type="text"],
+input[type="email"],
+select,
+textarea {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: 1rem;
+  border: 2px solid var(--light-gray);
+  border-radius: 8px;
+  font-family: var(--font-primary);
+  min-height: var(--input-height-mobile);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--secondary-blue);
+  box-shadow: 0 0 0 3px rgba(127, 122, 254, 0.1);
+}
+
+label {
+  display: block;
+  margin-bottom: var(--spacing-xs);
+  font-family: var(--font-primary);
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+/* RADIO BUTTONS - Mobile Optimized */
+input[type="radio"] {
+  width: 20px;
+  height: 20px;
+  margin-right: var(--spacing-sm);
+  cursor: pointer;
+}
+
+.radio-option {
+  display: flex;
+  align-items: flex-start;
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  border: 2px solid var(--light-gray);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: var(--touch-target-min);
+  background: var(--white);
+}
+
+.radio-option:hover,
+.radio-option:focus-within {
+  border-color: var(--secondary-blue);
+  background: rgba(127, 122, 254, 0.02);
+}
+
+.radio-option.selected {
+  border-color: var(--primary-navy);
+  background: rgba(15, 44, 105, 0.05);
+}
+
+/* PROGRESS BAR - Mobile First */
 .progress-bar {
   width: 100%;
   height: 8px;
   background-color: var(--light-gray);
   border-radius: 4px;
   overflow: hidden;
-  margin-bottom: 20px;
+  margin-bottom: var(--spacing-md);
 }
 
 .progress-fill {
@@ -181,32 +281,28 @@ p {
   transition: width 0.3s ease;
 }
 
-/* RTL Support */
+/* NAVIGATION BUTTONS - Mobile First */
+.navigation-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-lg);
+  width: 100%;
+}
+
+/* RTL SUPPORT - Mobile First */
 .rtl {
   direction: rtl;
   text-align: right;
-  font-family: var(--font-primary) !important; /* Force Montserrat for all RTL text */
+  font-family: var(--font-primary) !important;
 }
 
 .rtl * {
-  font-family: var(--font-primary) !important; /* Force Montserrat for all RTL child elements */
-}
-
-/* Form Elements Font Support */
-select, option, input, textarea {
   font-family: var(--font-primary) !important;
 }
 
-select option {
-  font-family: var(--font-primary) !important;
-}
-
-/* Ensure Arabic text in form elements uses Montserrat */
-.rtl select, .rtl option, .rtl input, .rtl textarea {
-  font-family: var(--font-primary) !important;
-}
-
-.rtl .assessment-card {
+.rtl .assessment-card,
+.rtl .role-card {
   border-left: none;
   border-right: 4px solid var(--primary-navy);
 }
@@ -216,22 +312,189 @@ select option {
   text-align: center;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
+.rtl input[type="radio"] {
+  margin-right: 0;
+  margin-left: var(--spacing-sm);
+}
+
+/* RESPONSIVE BREAKPOINTS - Mobile First Approach */
+
+/* Small Mobile - 320px and up */
+@media screen and (min-width: 320px) {
+  .container {
+    padding: 0 var(--spacing-md);
+  }
+}
+
+/* Large Mobile - 480px and up */
+@media screen and (min-width: 480px) {
+  :root {
+    --spacing-md: 20px;
+    --spacing-lg: 28px;
+    --spacing-xl: 36px;
+  }
+  
   h1 {
-    font-size: 2rem;
+    font-size: 2rem; /* 32px */
   }
   
   h2 {
-    font-size: 1.5rem;
-  }
-  
-  .container {
-    padding: 0 15px;
+    font-size: 1.75rem; /* 28px */
   }
   
   .assessment-card,
   .role-card {
-    padding: 16px;
+    padding: var(--spacing-lg);
+  }
+  
+  .navigation-buttons {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  
+  .navigation-buttons .btn-primary,
+  .navigation-buttons .btn-secondary {
+    width: auto;
+    min-width: 120px;
+  }
+}
+
+/* Tablet - 768px and up */
+@media screen and (min-width: 768px) {
+  html {
+    font-size: 18px; /* Increase base font size */
+  }
+  
+  :root {
+    --spacing-md: 24px;
+    --spacing-lg: 32px;
+    --spacing-xl: 48px;
+    --spacing-2xl: 64px;
+  }
+  
+  h1 {
+    font-size: 2.5rem; /* 45px */
+  }
+  
+  h2 {
+    font-size: 2rem; /* 36px */
+  }
+  
+  h3 {
+    font-size: 1.5rem; /* 27px */
+  }
+  
+  .container {
+    max-width: 768px;
+    padding: 0 var(--spacing-lg);
+  }
+  
+  .page-container {
+    padding: var(--spacing-xl) 0;
+  }
+  
+  .assessment-card,
+  .role-card {
+    padding: var(--spacing-xl);
+    margin-bottom: var(--spacing-lg);
+  }
+  
+  .btn-primary,
+  .btn-secondary {
+    width: auto;
+    min-width: 160px;
+    padding: var(--spacing-md) var(--spacing-xl);
+  }
+  
+  .radio-option {
+    padding: var(--spacing-lg);
+  }
+}
+
+/* Desktop - 1024px and up */
+@media screen and (min-width: 1024px) {
+  .container {
+    max-width: 960px;
+  }
+  
+  h1 {
+    font-size: 3rem; /* 54px */
+  }
+  
+  h2 {
+    font-size: 2.25rem; /* 40.5px */
+  }
+  
+  .page-container {
+    padding: var(--spacing-2xl) 0;
+  }
+}
+
+/* Large Desktop - 1200px and up */
+@media screen and (min-width: 1200px) {
+  .container {
+    max-width: 1200px;
+    padding: 0 var(--spacing-xl);
+  }
+  
+  .assessment-card,
+  .role-card {
+    padding: var(--spacing-2xl);
+  }
+}
+
+/* High DPI Displays */
+@media screen and (-webkit-min-device-pixel-ratio: 2),
+       screen and (min-resolution: 192dpi) {
+  .btn-primary,
+  .btn-secondary {
+    border: 1px solid transparent; /* Prevent sub-pixel rendering issues */
+  }
+}
+
+/* Landscape Mobile Orientation */
+@media screen and (max-height: 500px) and (orientation: landscape) {
+  .page-container {
+    padding: var(--spacing-sm) 0;
+  }
+  
+  h1 {
+    font-size: 1.5rem;
+  }
+  
+  h2 {
+    font-size: 1.25rem;
+  }
+  
+  .assessment-card,
+  .role-card {
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
+  }
+}
+
+/* Accessibility & Performance */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --white: #1a1a1a;
+    --light-gray: #2a2a2a;
+    --text-primary: #e0e0e0;
+    --text-dark: #f0f0f0;
+    --text-light: #a0a0a0;
+  }
+  
+  .assessment-card,
+  .role-card {
+    background: var(--white);
+    border-color: var(--light-gray);
   }
 }

@@ -119,10 +119,43 @@ function ResultsPageContent() {
   // Export functions
   const downloadPDF = async () => {
     try {
-      // TODO: Implement PDF download API
-      alert(language === 'ar' ? 'جاري تحميل تقرير PDF...' : 'Downloading PDF report...');
+      if (!sessionId) {
+        alert(language === 'ar' ? 'معرف الجلسة غير موجود' : 'Session ID not found');
+        return;
+      }
+
+      // Show loading indicator
+      const originalText = document.querySelector('button[onClick*="downloadPDF"]')?.textContent;
+      const button = document.querySelector('button[onClick*="downloadPDF"]');
+      if (button) button.textContent = language === 'ar' ? 'جاري الإنشاء...' : 'Generating...';
+
+      const response = await fetch(`/api/export-pdf?session=${sessionId}&lang=${language}`);
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `data-maturity-report-${sessionId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        throw new Error('Failed to generate PDF');
+      }
+
+      // Restore button text
+      if (button && originalText) button.textContent = originalText;
     } catch (error) {
+      console.error('PDF download error:', error);
       alert(language === 'ar' ? 'خطأ في تحميل PDF' : 'Error downloading PDF');
+      
+      // Restore button text on error
+      const button = document.querySelector('button[onClick*="downloadPDF"]');
+      const originalText = language === 'ar' ? 'تحميل تقرير PDF' : 'Download PDF Report';
+      if (button) button.textContent = originalText;
     }
   };
 
