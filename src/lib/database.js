@@ -566,3 +566,176 @@ export async function generateAssessmentResults(userId, assessmentCode) {
     return { success: false, error: 'Failed to generate results' };
   }
 }
+
+// Admin Authentication Functions
+export async function validateAdminCredentials(username, password) {
+  const database = await openDatabase();
+  
+  try {
+    const adminUser = await database.get(`
+      SELECT id, username, password_hash, is_active, last_login
+      FROM admin_users 
+      WHERE username = ? AND is_active = 1
+    `, [username]);
+
+    if (!adminUser) {
+      return { valid: false, error: 'Invalid credentials' };
+    }
+
+    // Simple password comparison (in production, use bcrypt)
+    if (adminUser.password_hash !== password) {
+      return { valid: false, error: 'Invalid credentials' };
+    }
+
+    // Update last login
+    await database.run(`
+      UPDATE admin_users 
+      SET last_login = datetime('now')
+      WHERE id = ?
+    `, [adminUser.id]);
+
+    await logAction('admin', adminUser.id, 'admin_login', `Username: ${username}`, '');
+
+    return { 
+      valid: true, 
+      adminData: {
+        id: adminUser.id,
+        username: adminUser.username
+      }
+    };
+  } catch (error) {
+    console.error('Error validating admin credentials:', error);
+    return { valid: false, error: 'Authentication error' };
+  }
+}
+
+// Create new assessment codes (admin function)
+export async function createAssessmentCodes(codesData) {
+  const database = await openDatabase();
+  
+  try {
+    await database.run('BEGIN TRANSACTION');
+    
+    const createdCodes = [];
+    
+    for (const codeData of codesData) {
+      const code = generateRandomCode(8);
+      const codeId = `code_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      await database.run(`
+        INSERT INTO assessment_codes (
+          id, code, organization_name, intended_recipient, 
+          expires_at, max_uses, assessment_type, is_used, 
+          usage_count, created_by, created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?, datetime('now'))
+      `, [
+        codeId, 
+        code, 
+        codeData.organizationName, 
+        codeData.intendedRecipient,
+        codeData.expiresAt,
+        codeData.maxUses || 1,
+        codeData.assessmentType || 'full',
+        codeData.createdBy
+      ]);
+      
+      createdCodes.push({
+        id: codeId,
+        code: code,
+        organizationName: codeData.organizationName,
+        intendedRecipient: codeData.intendedRecipient,
+        assessmentType: codeData.assessmentType || 'full'
+      });
+    }
+    
+    await database.run('COMMIT');
+    await logAction('admin', codesData[0]?.createdBy, 'codes_created', `Created ${createdCodes.length} codes`, '');
+    
+    return { success: true, codes: createdCodes };
+  } catch (error) {
+    await database.run('ROLLBACK');
+    console.error('Error creating assessment codes:', error);
+    return { success: false, error: 'Failed to create codes' };
+  }
+}
+
+// Get all assessment codes with filters (admin function)
+export async function getAssessmentCodes(filters = {}) {
+  const database = await openDatabase();
+  
+  try {
+    let query = `
+      SELECT 
+        ac.id, ac.code, ac.organization_name, ac.intended_recipient,
+        ac.expires_at, ac.max_uses, ac.assessment_type, ac.is_used,
+        ac.usage_count, ac.created_by, ac.created_at,
+        COUNT(u.id) as users_count,
+        MAX(s.session_end) as last_used
+      FROM assessment_codes ac
+      LEFT JOIN users u ON ac.code = u.assessment_code
+      LEFT JOIN assessment_sessions s ON u.id = s.user_id
+      WHERE 1=1
+    `;
+    
+    const params = [];
+    
+    if (filters.type) {
+      query += ` AND ac.assessment_type = ?`;
+      params.push(filters.type);
+    }
+    
+    if (filters.status === 'active') {
+      query += ` AND ac.is_used = 0 AND (ac.expires_at IS NULL OR ac.expires_at > datetime('now'))`;
+    } else if (filters.status === 'expired') {
+      query += ` AND ac.expires_at <= datetime('now')`;
+    } else if (filters.status === 'used') {
+      query += ` AND ac.is_used = 1`;
+    }
+    
+    query += ` GROUP BY ac.id ORDER BY ac.created_at DESC`;
+    
+    if (filters.limit) {
+      query += ` LIMIT ${parseInt(filters.limit)}`;
+    }
+    
+    const codes = await database.all(query, params);
+    
+    return { success: true, codes };
+  } catch (error) {
+    console.error('Error getting assessment codes:', error);
+    return { success: false, error: 'Failed to retrieve codes' };
+  }
+}
+
+// Delete assessment code (admin function)
+export async function deleteAssessmentCode(codeId, adminId) {
+  const database = await openDatabase();
+  
+  try {
+    const result = await database.run(`
+      DELETE FROM assessment_codes WHERE id = ?
+    `, [codeId]);
+    
+    if (result.changes === 0) {
+      return { success: false, error: 'Code not found' };
+    }
+    
+    await logAction('admin', adminId, 'code_deleted', `Code ID: ${codeId}`, '');
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting assessment code:', error);
+    return { success: false, error: 'Failed to delete code' };
+  }
+}
+
+// Helper function to generate random codes
+function generateRandomCode(length = 8) {
+  const chars = 'ABCDEFGHIJKLMNPQRSTUVWXYZ123456789';
+  let code = '';
+  for (let i = 0; i < length; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}

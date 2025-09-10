@@ -7,9 +7,30 @@ import Link from 'next/link';
 function RoleSelectionPageContent() {
   const [selectedRole, setSelectedRole] = useState('');
   const [userId, setUserId] = useState(''); 
+  const [questionCount, setQuestionCount] = useState(35); // Default to 35
   const router = useRouter();
   const searchParams = useSearchParams();
   const language = searchParams.get('lang') || 'en';
+  
+  // Get question count based on assessment code
+  useEffect(() => {
+    const getQuestionCount = async () => {
+      try {
+        const assessmentCode = sessionStorage.getItem('assessmentCode');
+        if (assessmentCode) {
+          const response = await fetch(`/api/questions?lang=${language}&code=${assessmentCode}`);
+          const data = await response.json();
+          if (data.success) {
+            setQuestionCount(data.questions.length);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching question count:', error);
+      }
+    };
+    
+    getQuestionCount();
+  }, [language]);
   
 
 
@@ -20,11 +41,11 @@ function RoleSelectionPageContent() {
       en: {
         language: 'Language',
         title: 'Select Your Role',
-        description: 'Your role helps us provide personalized recommendations and relevant action plans. All users will answer the same 35 questions regardless of role selection.',
+        description: `Your role helps us provide personalized recommendations and relevant action plans. All users will answer the same ${questionCount} questions regardless of role selection.`,
         languageSection: 'Assessment Language:',
         changeLanguage: 'Change language:',
         note: 'Note:',
-        noteText: 'Role selection is used only for personalizing your recommendations. You will see all 35 questions covering the complete data maturity framework.',
+        noteText: `Role selection is used only for personalizing your recommendations. You will see all ${questionCount} questions covering the complete data maturity framework.`,
         noteLanguage: 'The assessment will be conducted in',
         noteLanguageChange: 'You can change the language above if needed.',
         startButton: 'START ASSESSMENT',
@@ -33,7 +54,7 @@ function RoleSelectionPageContent() {
         rolesLabel: 'Roles:',
         focusLabel: 'Focus:',
         warningTitle: 'Important Warning',
-        warningText: 'If you close the assessment before answering all 35 questions, you will lose your progress and need to restart the assessment.',
+        warningText: `If you close the assessment before answering all ${questionCount} questions, you will lose your progress and need to restart the assessment.`,
         roles: {
           executive: {
             title: 'Executive/C-Suite Level',
@@ -70,11 +91,11 @@ function RoleSelectionPageContent() {
       ar: {
         language: 'اللغة',
         title: 'اختر دورك',
-        description: 'دورك يساعدنا في تقديم توصيات مخصصة وخطط عمل ذات صلة. جميع المستخدمين سيجيبون على نفس الـ 35 سؤالاً بغض النظر عن اختيار الدور.',
+        description: `دورك يساعدنا في تقديم توصيات مخصصة وخطط عمل ذات صلة. جميع المستخدمين سيجيبون على نفس الـ ${questionCount} سؤالاً بغض النظر عن اختيار الدور.`,
         languageSection: 'لغة التقييم:',
         changeLanguage: 'تغيير اللغة:',
         note: 'ملاحظة:',
-        noteText: 'يُستخدم اختيار الدور فقط لتخصيص توصياتك. سترى جميع الأسئلة الـ 35 التي تغطي إطار عمل نضج البيانات الكامل.',
+        noteText: `يُستخدم اختيار الدور فقط لتخصيص توصياتك. سترى جميع الأسئلة الـ ${questionCount} التي تغطي إطار عمل نضج البيانات الكامل.`,
         noteLanguage: 'سيتم إجراء التقييم باللغة',
         noteLanguageChange: 'يمكنك تغيير اللغة أعلاه إذا لزم الأمر.',
         startButton: 'بدء التقييم',
@@ -83,7 +104,7 @@ function RoleSelectionPageContent() {
         rolesLabel: 'الأدوار:',
         focusLabel: 'التركيز:',
         warningTitle: 'تحذير هام',
-        warningText: 'إذا أغلقت التقييم قبل الإجابة على جميع الأسئلة الـ 35، ستفقد تقدمك وستحتاج لبدء التقييم من جديد',
+        warningText: `إذا أغلقت التقييم قبل الإجابة على جميع الأسئلة الـ ${questionCount}، ستفقد تقدمك وستحتاج لبدء التقييم من جديد`,
         roles: {
           executive: {
             title: 'المستوى التنفيذي/كبار القادة',
