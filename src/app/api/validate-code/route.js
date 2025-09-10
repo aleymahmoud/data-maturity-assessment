@@ -77,7 +77,8 @@ export async function POST(request) {
       valid: true,
       isCompleted: false,
       hasUserData: false,
-      organizationName: validation.data.organizationName
+      organizationName: validation.data.organizationName,
+      assessmentType: validation.data.assessmentType
     });
 
   } catch (error) {

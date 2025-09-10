@@ -86,6 +86,9 @@ const handleSubmit = async (e) => {
         if (result.organizationName) {
           sessionStorage.setItem('organizationName', result.organizationName);
         }
+        if (result.assessmentType) {
+          sessionStorage.setItem('assessmentType', result.assessmentType);
+        }
         router.push(`/user-info?lang=${language}`);
       }
     } else {

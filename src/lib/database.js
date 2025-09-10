@@ -39,7 +39,7 @@ export async function validateAssessmentCode(code) {
   
   try {
     const codeRecord = await database.get(`
-      SELECT code, organization_name, intended_recipient, expires_at, is_used, usage_count, max_uses
+      SELECT code, organization_name, intended_recipient, expires_at, is_used, usage_count, max_uses, assessment_type
       FROM assessment_codes 
       WHERE code = ?
     `, [code]);
@@ -53,10 +53,8 @@ export async function validateAssessmentCode(code) {
       return { valid: false, error: 'Assessment code has expired' };
     }
 
-    // Check if code has been used (completed assessment)
-    if (codeRecord.is_used && codeRecord.usage_count >= codeRecord.max_uses) {
-      return { valid: false, error: 'Assessment code has already been used' };
-    }
+    // Allow used codes - they will be handled in the validation API to redirect to results
+    // No longer block used codes here
 
     // Check for existing session
     const existingSession = await database.get(`
@@ -76,6 +74,7 @@ export async function validateAssessmentCode(code) {
         organizationName: codeRecord.organization_name,
         intendedRecipient: codeRecord.intended_recipient,
         isUsed: codeRecord.is_used,
+        assessmentType: codeRecord.assessment_type || 'full',
         existingSession: existingSession
       }
     };
@@ -459,7 +458,9 @@ export async function getUserDataByCode(code) {
       JOIN assessment_codes ac ON u.assessment_code = ac.code
       LEFT JOIN assessment_sessions s ON s.user_id = u.id
       WHERE u.assessment_code = ?
-      ORDER BY u.created_at DESC
+      ORDER BY u.created_at DESC, 
+               CASE WHEN s.status = 'completed' THEN 1 ELSE 2 END,
+               s.session_end DESC, s.session_start DESC
       LIMIT 1
     `, [code]);
 

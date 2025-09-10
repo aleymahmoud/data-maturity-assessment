@@ -4,12 +4,22 @@ import { openDatabase } from '../../../lib/database.js';
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const language = searchParams.get('lang') || 'en'; // Default to English
+    const language = searchParams.get('lang') || 'en';
+    const assessmentCode = searchParams.get('code');
     
     const db = await openDatabase();
     
-    // Get all questions with language-specific content
-    const questions = await db.all(`
+    // Get assessment type for this code
+    let assessmentType = 'full'; // default
+    if (assessmentCode) {
+      const codeData = await db.get(`
+        SELECT assessment_type FROM assessment_codes WHERE code = ?
+      `, [assessmentCode]);
+      assessmentType = codeData?.assessment_type || 'full';
+    }
+    
+    // Build query based on assessment type
+    let questionQuery = `
       SELECT 
         q.id,
         q.subdomain_id as subdomain,
@@ -19,10 +29,19 @@ export async function GET(request) {
         q.text_ar,
         q.scenario_en,
         q.scenario_ar,
-        q.icon
+        q.icon,
+        q.priority
       FROM questions q
-      ORDER BY CAST(REPLACE(q.id, 'Q', '') AS INTEGER)
-    `);
+    `;
+    
+    // Filter questions for quick assessment
+    if (assessmentType === 'quick') {
+      questionQuery += ` WHERE q.priority = 1`;
+    }
+    
+    questionQuery += ` ORDER BY CAST(REPLACE(q.id, 'Q', '') AS INTEGER)`;
+    
+    const questions = await db.all(questionQuery);
 
     // Get options for each question
     const questionsWithOptions = await Promise.all(

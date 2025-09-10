@@ -202,7 +202,8 @@ const initializeAssessment = async () => {
 
   const fetchQuestions = async () => {
     try {
-      const response = await fetch(`/api/questions?lang=${language}`);
+      const code = sessionStorage.getItem('assessmentCode');
+      const response = await fetch(`/api/questions?lang=${language}&code=${code}`);
       const data = await response.json();
       
       if (data.success) {
