@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sqlite3:*)",
+      "Bash(npm run dev:*)",
+      "Read(//c/**)",
+      "Bash(cd:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(node:*)",
+      "Bash(curl:*)",
+      "Bash(npm install:*)",
+      "Bash(taskkill:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm start)",
+      "Bash(cat:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run start:*)",
+      "Bash(tasklist:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(del create-admin-table.js)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
