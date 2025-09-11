@@ -11,6 +11,10 @@ function ResultsPageContent() {
   const [loading, setLoading] = useState(true);
   const [resultsData, setResultsData] = useState(null);
   const [error, setError] = useState('');
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [currentDate, setCurrentDate] = useState('');
+  const [isMounted, setIsMounted] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(true);
 
   // Get parameters from URL
   const sessionId = searchParams.get('session');
@@ -19,7 +23,29 @@ function ResultsPageContent() {
 
   useEffect(() => {
     setLanguage(lang);
+    setCurrentDate(new Date().toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US'));
+    setIsMounted(true);
+    
+    // Set up responsive behavior
+    const checkScreenSize = () => {
+      if (typeof window !== 'undefined') {
+        setIsDesktop(window.innerWidth > 768);
+      }
+    };
+
+    checkScreenSize();
+    
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', checkScreenSize);
+    }
+
     fetchResults();
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', checkScreenSize);
+      }
+    };
   }, [sessionId, lang]);
 
   const fetchResults = async () => {
@@ -291,7 +317,7 @@ function ResultsPageContent() {
           {/* Results Grid */}
           <div style={{ 
             display: 'grid',
-            gridTemplateColumns: window.innerWidth > 768 ? '1fr 1fr' : '1fr',
+            gridTemplateColumns: isDesktop ? '1fr 1fr' : '1fr',
             gap: '30px',
             marginBottom: '40px'
           }}>
@@ -433,7 +459,7 @@ function ResultsPageContent() {
             
             <div style={{ 
               display: 'grid',
-              gridTemplateColumns: window.innerWidth > 768 ? 'repeat(auto-fit, minmax(350px, 1fr))' : '1fr',
+              gridTemplateColumns: isDesktop ? 'repeat(auto-fit, minmax(350px, 1fr))' : '1fr',
               gap: '20px'
             }}>
                 {resultsData.subdomainScores && resultsData.subdomainScores.map((domain, index) => (
@@ -628,9 +654,17 @@ function ResultsPageContent() {
               flexWrap: 'wrap',
               direction: language === 'ar' ? 'rtl' : 'ltr'
             }}>
-              <button onClick={downloadPDF} className="btn-primary">
+              <button 
+                onClick={downloadPDF} 
+                disabled={isDownloading}
+                className="btn-primary"
+                style={{
+                  opacity: isDownloading ? 0.6 : 1,
+                  cursor: isDownloading ? 'not-allowed' : 'pointer'
+                }}
+              >
                 <span style={{ marginRight: language === 'ar' ? '0' : '8px', marginLeft: language === 'ar' ? '8px' : '0' }}>📄</span>
-                {content.downloadBtn}
+                {isDownloading ? (language === 'ar' ? 'جاري الإنشاء...' : 'Generating...') : content.downloadBtn}
               </button>
               
               <button onClick={exportData} className="btn-secondary">

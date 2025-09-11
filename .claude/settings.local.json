@@ -20,7 +20,10 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(del create-admin-table.js)"
+      "Bash(del create-admin-table.js)",
+      "Bash(del \"C:\\Users\\aleym\\Desktop\\data-maturity-assessment\\src\\app\\admin\\admin.module.css\")",
+      "Bash(pkill:*)",
+      "Bash(cmd //c:*)"
     ],
     "deny": [],
     "ask": []
