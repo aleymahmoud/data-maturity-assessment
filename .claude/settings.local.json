@@ -23,7 +23,11 @@
       "Bash(del create-admin-table.js)",
       "Bash(del \"C:\\Users\\aleym\\Desktop\\data-maturity-assessment\\src\\app\\admin\\admin.module.css\")",
       "Bash(pkill:*)",
-      "Bash(cmd //c:*)"
+      "Bash(cmd //c:*)",
+      "Bash(cmd /c:*)",
+      "Bash(rd:*)",
+      "Bash(del:*)",
+      "Bash(npx kill-port:*)"
     ],
     "deny": [],
     "ask": []
