@@ -41,17 +41,17 @@ interface BadgeProps {
 
 const Badge: React.FC<BadgeProps> = ({ children, variant = 'active', icon }) => {
   const variants = {
-    active: 'bg-green-100 text-green-800 border-green-200',
-    inactive: 'bg-gray-100 text-gray-800 border-gray-200',
-    pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    expired: 'bg-red-100 text-red-800 border-red-200',
-    success: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-    warning: 'bg-orange-100 text-orange-800 border-orange-200',
-    danger: 'bg-red-100 text-red-800 border-red-200'
+    active: 'bg-green-100 text-green-800',
+    inactive: 'bg-gray-100 text-gray-800',
+    pending: 'bg-yellow-100 text-yellow-800',
+    expired: 'bg-red-100 text-red-800',
+    success: 'bg-emerald-100 text-emerald-800',
+    warning: 'bg-orange-100 text-orange-800',
+    danger: 'bg-red-100 text-red-800'
   }
 
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${variants[variant]}`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${variants[variant]}`}>
       {icon}
       {children}
     </span>
@@ -192,9 +192,9 @@ export function DataTable<T extends Record<string, any>>({
   }
 
   return (
-    <div className={`bg-white rounded-lg border border-gray-200 shadow-sm ${className}`}>
+    <div className={`bg-white ${className}`}>
       {/* Header Section with Search and Filters */}
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-4 border-b border-gray-200">
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Search Input */}
           <div className="relative flex-1">
@@ -242,34 +242,41 @@ export function DataTable<T extends Record<string, any>>({
             )}
           </div>
         )}
+        
+        {/* Showing count */}
+        <div className="mt-2">
+          <p className="text-sm text-gray-500">
+            Showing {filteredData.length} of {data.length} items
+          </p>
+        </div>
       </div>
 
       {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr>
+          <thead>
+            <tr className="border-b border-gray-200">
               {columns.map((column, index) => (
                 <th
                   key={String(column.key)}
-                  className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${column.className || ''}`}
+                  className={`px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${column.className || ''}`}
                 >
                   {column.label}
                 </th>
               ))}
               {renderActions && (
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               )}
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody>
             {filteredData.length === 0 ? (
               <tr>
                 <td 
                   colSpan={columns.length + (renderActions ? 1 : 0)} 
-                  className="px-6 py-12 text-center"
+                  className="px-4 py-12 text-center"
                 >
                   <div className="flex flex-col items-center gap-3">
                     <AlertCircle className="h-8 w-8 text-gray-300" />
@@ -282,12 +289,12 @@ export function DataTable<T extends Record<string, any>>({
                 <tr
                   key={rowIndex}
                   onClick={() => onRowClick?.(item)}
-                  className={`hover:bg-gray-50 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
+                  className={`hover:bg-gray-50 border-b border-gray-100 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
                 >
                   {columns.map((column, colIndex) => (
                     <td
                       key={String(column.key)}
-                      className={`px-6 py-4 whitespace-nowrap text-sm ${column.className || ''}`}
+                      className={`px-4 py-4 text-sm ${column.className || ''}`}
                     >
                       {column.render 
                         ? column.render(item[column.key], item)
@@ -296,7 +303,7 @@ export function DataTable<T extends Record<string, any>>({
                     </td>
                   ))}
                   {renderActions && (
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td className="px-4 py-4 text-center">
                       {renderActions(item)}
                     </td>
                   )}

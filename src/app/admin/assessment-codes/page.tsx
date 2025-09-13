@@ -2,27 +2,34 @@
 
 import { useState, useEffect } from 'react'
 import { Code, Plus, Search, Filter, Calendar, Users, Eye, EyeOff, Trash2, Edit, Copy, X, CheckSquare, Hash } from 'lucide-react'
+import { DataTable, Badge, Column } from '../../../components/DataTable'
+
+// Types for the assessment code data
+interface AssessmentCode {
+  code: string
+  status: 'active' | 'inactive' | 'expired' | 'used_up'
+  max_uses: number
+  usage_count: number
+  expires_at: string
+  created_at: string
+  description?: string
+  assessment_type: 'full' | 'quick'
+}
 
 export default function AssessmentCodesPage() {
-  const [codes, setCodes] = useState([])
+  const [codes, setCodes] = useState<AssessmentCode[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
   const [showGenerateModal, setShowGenerateModal] = useState(false)
 
   useEffect(() => {
     fetchCodes()
-  }, [searchTerm, statusFilter])
+  }, [])
 
   const fetchCodes = async () => {
     try {
       setLoading(true)
-      const params = new URLSearchParams()
-      if (searchTerm) params.append('search', searchTerm)
-      if (statusFilter !== 'all') params.append('status', statusFilter)
-
-      const response = await fetch(`/api/admin/assessment-codes?${params}`)
+      const response = await fetch('/api/admin/assessment-codes')
       const data = await response.json()
 
       if (!response.ok) {
@@ -38,12 +45,12 @@ export default function AssessmentCodesPage() {
     }
   }
 
-  const copyToClipboard = (text) => {
+  const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
     // Could add toast notification here
   }
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
@@ -53,29 +60,7 @@ export default function AssessmentCodesPage() {
     })
   }
 
-  const getStatusBadge = (status) => {
-    const statusStyles = {
-      active: 'bg-green-100 text-green-800',
-      expired: 'bg-red-100 text-red-800',
-      used_up: 'bg-orange-100 text-orange-800',
-      inactive: 'bg-gray-100 text-gray-800'
-    }
-
-    const statusLabels = {
-      active: 'Active',
-      expired: 'Expired',
-      used_up: 'Used Up',
-      inactive: 'Inactive'
-    }
-
-    return (
-      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusStyles[status]}`}>
-        {statusLabels[status]}
-      </span>
-    )
-  }
-
-  const toggleCodeStatus = async (code, currentStatus) => {
+  const toggleCodeStatus = async (code: string, currentStatus: string) => {
     try {
       const response = await fetch(`/api/admin/assessment-codes/${code}`, {
         method: 'PUT',
@@ -94,7 +79,7 @@ export default function AssessmentCodesPage() {
     }
   }
 
-  const deleteCode = async (code) => {
+  const deleteCode = async (code: string) => {
     if (!confirm('Are you sure you want to delete this assessment code?')) return
 
     try {
@@ -109,6 +94,133 @@ export default function AssessmentCodesPage() {
       console.error('Error deleting code:', error)
     }
   }
+
+  // Define table columns
+  const columns: Column<AssessmentCode>[] = [
+    {
+      key: 'code',
+      label: 'Code',
+      render: (value, item) => (
+        <div className="flex items-center gap-3">
+          <div className="flex-shrink-0 h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center">
+            <Code size={16} className="text-gray-600" />
+          </div>
+          <div>
+            <div className="font-medium text-gray-900">{value}</div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                copyToClipboard(value)
+              }}
+              className="text-xs text-gray-500 hover:text-blue-600 transition-colors"
+              title="Copy to clipboard"
+            >
+              Copy to clipboard
+            </button>
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'assessment_type',
+      label: 'Type',
+      render: (value) => (
+        <Badge variant={value === 'full' ? 'pending' : 'active'}>
+          {value === 'full' ? 'Full Assessment' : 'Quick Assessment'}
+        </Badge>
+      )
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      render: (value, item) => {
+        const statusConfig = {
+          active: { variant: 'success' as const },
+          inactive: { variant: 'inactive' as const },
+          expired: { variant: 'danger' as const },
+          used_up: { variant: 'warning' as const }
+        }
+        
+        const config = statusConfig[value] || statusConfig.inactive
+        
+        return (
+          <Badge variant={config.variant}>
+            {value === 'active' ? 'Active' : value === 'used_up' ? 'Used Up' : value === 'expired' ? 'Expired' : 'Inactive'}
+          </Badge>
+        )
+      }
+    },
+    {
+      key: 'usage_count',
+      label: 'Usage',
+      render: (value, item) => (
+        <div className="text-sm text-gray-900">
+          <span className="font-medium">{value}</span>
+          <span className="text-gray-400">/{item.max_uses || '∞'}</span>
+        </div>
+      )
+    },
+    {
+      key: 'expires_at',
+      label: 'Last Updated',
+      render: (value) => (
+        <span className="text-sm text-gray-500">
+          {formatDate(value)}
+        </span>
+      )
+    }
+  ]
+
+  // Define filters
+  const filters = [
+    {
+      key: 'status',
+      label: 'Filter by Status',
+      options: [
+        { value: 'active', label: 'Active' },
+        { value: 'inactive', label: 'Inactive' },
+        { value: 'expired', label: 'Expired' },
+        { value: 'used_up', label: 'Used Up' }
+      ]
+    },
+    {
+      key: 'assessment_type',
+      label: 'Filter by Type',
+      options: [
+        { value: 'full', label: 'Full Assessment' },
+        { value: 'quick', label: 'Quick Assessment' }
+      ]
+    }
+  ]
+
+  // Render action buttons for each row
+  const renderActions = (item: AssessmentCode) => (
+    <div className="flex items-center justify-center gap-1">
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          toggleCodeStatus(item.code, item.status)
+        }}
+        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-gray-100 rounded transition-colors"
+        title={item.status === 'active' ? 'Deactivate' : 'Activate'}
+      >
+        {item.status === 'active' ? 
+          <EyeOff size={16} /> : 
+          <Eye size={16} />
+        }
+      </button>
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          deleteCode(item.code)
+        }}
+        className="p-2 text-gray-400 hover:text-red-600 hover:bg-gray-100 rounded transition-colors"
+        title="Delete"
+      >
+        <Trash2 size={16} />
+      </button>
+    </div>
+  )
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -286,45 +398,9 @@ export default function AssessmentCodesPage() {
             </div>
           </div>
 
-          {/* Search and Filters */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
-            <div className="flex flex-col lg:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search size={18} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search codes by name or description..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                />
-              </div>
-              <div className="flex gap-3">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white min-w-[140px] font-medium"
-                >
-                  <option value="all">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="expired">Expired</option>
-                  <option value="used_up">Used Up</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
           {/* Assessment Codes Table */}
-          <div className="bg-white rounded-lg border overflow-hidden">
-            {loading ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                  <p className="text-gray-600">Loading assessment codes...</p>
-                </div>
-              </div>
-            ) : error ? (
+          {error ? (
+            <div className="bg-white rounded-lg border border-gray-200">
               <div className="p-8 text-center">
                 <p className="text-red-600 mb-4">{error}</p>
                 <button 
@@ -334,110 +410,20 @@ export default function AssessmentCodesPage() {
                   Try Again
                 </button>
               </div>
-            ) : codes.length === 0 ? (
-              <div className="p-12 text-center">
-                <Code size={48} className="mx-auto text-gray-300 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No assessment codes found</h3>
-                <p className="text-gray-500 mb-6">Get started by generating your first assessment code</p>
-                <button 
-                  onClick={() => setShowGenerateModal(true)}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Generate Your First Code
-                </button>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Code
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Usage
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Expires
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Created
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {codes.map((codeData) => (
-                      <tr key={codeData.code} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 font-mono">
-                              {codeData.code}
-                            </span>
-                            <button
-                              onClick={() => copyToClipboard(codeData.code)}
-                              className="ml-2 p-1 text-gray-400 hover:text-blue-600 transition-colors"
-                              title="Copy to clipboard"
-                            >
-                              <Copy size={14} />
-                            </button>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {getStatusBadge(codeData.status)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <div className="flex items-center">
-                            <div className="flex-shrink-0 h-6 w-6 rounded-full bg-gray-200 flex items-center justify-center mr-2">
-                              <Users size={14} className="text-gray-500" />
-                            </div>
-                            <span className="font-medium">{codeData.usage_count}</span>
-                            <span className="text-gray-400 mx-1">/</span>
-                            <span>{codeData.max_uses || '∞'}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <div className="flex items-center">
-                            <Calendar size={16} className="mr-2 text-gray-400" />
-                            {formatDate(codeData.expires_at)}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatDate(codeData.created_at)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => toggleCodeStatus(codeData.code, codeData.status)}
-                              className="text-gray-400 hover:text-gray-600 transition-colors p-1"
-                              title={codeData.status === 'active' ? 'Deactivate' : 'Activate'}
-                            >
-                              {codeData.status === 'active' ? 
-                                <EyeOff size={16} /> : 
-                                <Eye size={16} />
-                              }
-                            </button>
-                            <button
-                              onClick={() => deleteCode(codeData.code)}
-                              className="text-gray-400 hover:text-red-600 transition-colors p-1"
-                              title="Delete"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg border border-gray-200">
+              <DataTable
+                data={codes}
+                columns={columns}
+                filters={filters}
+                searchPlaceholder="Search codes by code, description, or assessment type..."
+                emptyMessage="No assessment codes found. Generate your first code to get started."
+                loading={loading}
+                renderActions={renderActions}
+              />
+            </div>
+          )}
         </div>
       </div>
 

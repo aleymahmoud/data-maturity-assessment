@@ -27,7 +27,10 @@
       "Bash(cmd /c:*)",
       "Bash(rd:*)",
       "Bash(del:*)",
-      "Bash(npx kill-port:*)"
+      "Bash(npx kill-port:*)",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_wait_for"
     ],
     "deny": [],
     "ask": []
