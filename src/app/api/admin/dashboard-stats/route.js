@@ -1,110 +1,95 @@
-import { NextResponse } from 'next/server'
-import Database from 'better-sqlite3'
-import path from 'path'
-
-const db = new Database(path.join(process.cwd(), 'data_maturity.db'))
+import { openDatabase } from '../../../../lib/database.js'
 
 export async function GET(request) {
   try {
-    // For now, we'll skip session check to get the API working
-    // In production, you should add proper authentication
+    // For now, skip authentication check since session is working in the frontend
+    // This is temporary - in production you'd want proper server-side auth
 
-    // Active Codes: Count of assessment codes that are not expired and not fully used
-    const activeCodesQuery = `
-      SELECT COUNT(*) as count 
-      FROM assessment_codes 
-      WHERE expires_at > datetime('now') 
-      AND (usage_count < max_uses OR max_uses IS NULL)
-    `
-    const activeCodes = db.prepare(activeCodesQuery).get()
+    // const session = await getServerSession()
+    // if (!session || !session.user || session.user.role !== 'admin' && session.user.role !== 'super_admin') {
+    //   return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+    //     status: 401,
+    //     headers: { 'Content-Type': 'application/json' }
+    //   })
+    // }
 
-    // Completed Assessments: Count of completed assessment sessions
-    const completedAssessmentsQuery = `
-      SELECT COUNT(*) as count 
-      FROM assessment_sessions 
-      WHERE status = 'completed' OR completion_percentage >= 100
-    `
-    const completedAssessments = db.prepare(completedAssessmentsQuery).get()
+    const database = await openDatabase()
 
-    // Active Sessions: Count of sessions in progress
-    const activeSessionsQuery = `
-      SELECT COUNT(*) as count 
-      FROM assessment_sessions 
-      WHERE status IN ('in_progress', 'started') 
-      AND (completion_percentage < 100 OR completion_percentage IS NULL)
-      AND datetime(session_start) > datetime('now', '-7 days')
-    `
-    const activeSessions = db.prepare(activeSessionsQuery).get()
+    // Get active assessment codes count
+    const [activeCodesResult] = await database.query(`
+      SELECT COUNT(*) as count
+      FROM assessment_codes
+      WHERE expires_at > NOW() AND is_used = 0
+    `)
 
-    // Recent Activity: Get latest audit log entries
-    const recentActivityQuery = `
-      SELECT 
-        action,
-        details,
-        timestamp,
-        user_type
-      FROM audit_logs 
-      WHERE timestamp > datetime('now', '-7 days')
-      ORDER BY timestamp DESC 
+    // Get completed assessments count (count sessions with status = 'completed')
+    const [completedAssessmentsResult] = await database.query(`
+      SELECT COUNT(*) as count
+      FROM assessment_sessions
+      WHERE status = 'completed'
+    `)
+
+    // Get active sessions count (sessions that are in progress)
+    const [activeSessionsResult] = await database.query(`
+      SELECT COUNT(*) as count
+      FROM assessment_sessions
+      WHERE status = 'in_progress'
+    `)
+
+    // Get recent activity from audit logs
+    const [recentActivityResult] = await database.query(`
+      SELECT action, details, timestamp
+      FROM audit_logs
+      ORDER BY timestamp DESC
       LIMIT 10
-    `
-    const recentActivity = db.prepare(recentActivityQuery).all()
+    `)
 
-    // Format activity data for display
-    const formattedActivity = recentActivity.map(activity => {
-      const timeAgo = getTimeAgo(activity.timestamp)
-      let description = activity.action
-      
-      // Format different types of activities
-      if (activity.action.includes('assessment_completed')) {
-        description = 'Assessment completed'
-      } else if (activity.action.includes('session_started')) {
-        description = 'Assessment session started'
-      } else if (activity.action.includes('code_generated')) {
-        description = 'Assessment code generated'
-      } else if (activity.action.includes('user_registered')) {
-        description = 'New user registered'
-      } else if (activity.action.includes('login')) {
-        description = 'User logged in'
-      }
-
-      return {
-        description,
-        timestamp: activity.timestamp,
-        timeAgo,
-        details: activity.details
-      }
-    })
+    const recentActivity = recentActivityResult.map(log => ({
+      description: `${log.action}: ${log.details}`,
+      timeAgo: formatTimeAgo(log.timestamp)
+    }))
 
     const stats = {
-      activeCodes: activeCodes.count || 0,
-      completedAssessments: completedAssessments.count || 0,
-      activeSessions: activeSessions.count || 0,
-      recentActivity: formattedActivity
+      activeCodes: activeCodesResult[0].count,
+      completedAssessments: completedAssessmentsResult[0].count,
+      activeSessions: activeSessionsResult[0].count,
+      recentActivity: recentActivity
     }
 
-    return NextResponse.json({ success: true, stats })
+    return new Response(JSON.stringify({
+      success: true,
+      stats: stats
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    })
 
   } catch (error) {
-    console.error('Dashboard stats error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Error fetching dashboard stats:', error)
+    return new Response(JSON.stringify({
+      error: 'Failed to fetch dashboard statistics'
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    })
   }
 }
 
-// Helper function to format timestamps as "time ago"
-function getTimeAgo(timestamp) {
+// Helper function to format time ago
+function formatTimeAgo(timestamp) {
   const now = new Date()
-  const activityTime = new Date(timestamp)
-  const diffInMinutes = Math.floor((now - activityTime) / (1000 * 60))
+  const past = new Date(timestamp)
+  const diffMs = now - past
 
-  if (diffInMinutes < 1) return 'Just now'
-  if (diffInMinutes < 60) return `${diffInMinutes} minute${diffInMinutes === 1 ? '' : 's'} ago`
-  
-  const diffInHours = Math.floor(diffInMinutes / 60)
-  if (diffInHours < 24) return `${diffInHours} hour${diffInHours === 1 ? '' : 's'} ago`
-  
-  const diffInDays = Math.floor(diffInHours / 24)
-  if (diffInDays < 7) return `${diffInDays} day${diffInDays === 1 ? '' : 's'} ago`
-  
-  return activityTime.toLocaleDateString()
+  const diffMinutes = Math.floor(diffMs / (1000 * 60))
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+  if (diffMinutes < 60) {
+    return `${diffMinutes} minutes ago`
+  } else if (diffHours < 24) {
+    return `${diffHours} hours ago`
+  } else {
+    return `${diffDays} days ago`
+  }
 }

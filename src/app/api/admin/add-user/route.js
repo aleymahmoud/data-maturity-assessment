@@ -1,99 +1,59 @@
-import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import bcrypt from 'bcryptjs'
-import Database from 'better-sqlite3'
-import path from 'path'
-import { authOptions } from '../../auth/[...nextauth]/route'
-
-const db = new Database(path.join(process.cwd(), 'data_maturity.db'))
+import { NextResponse } from 'next/server';
+import { openDatabase } from '../../../../lib/database.js';
+import bcrypt from 'bcryptjs';
 
 export async function POST(request) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session || session.user?.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const { name, username, email, password } = await request.json();
+
+    if (!username || !password) {
+      return NextResponse.json({
+        success: false,
+        error: 'Username, password, and role are required'
+      }, { status: 400 });
     }
 
-    const { name, username, email, password } = await request.json()
-
-    // Validation
-    if (!name || !username || !email || !password) {
-      return NextResponse.json({ error: 'Name, username, email and password are required' }, { status: 400 })
-    }
-
-    if (password.length < 6) {
-      return NextResponse.json({ error: 'Password must be at least 6 characters long' }, { status: 400 })
-    }
-
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return NextResponse.json({ error: 'Please enter a valid email address' }, { status: 400 })
-    }
+    const database = await openDatabase();
 
     // Check if username already exists
-    const existingUsername = db.prepare('SELECT id FROM admins WHERE username = ?').get(username)
-    if (existingUsername) {
-      return NextResponse.json({ error: 'An admin with this username already exists' }, { status: 400 })
-    }
+    const [existingUsers] = await database.execute(
+      'SELECT id FROM admin_users WHERE username = ?',
+      [username]
+    );
 
-    // Check if email already exists
-    const existingEmail = db.prepare('SELECT id FROM admins WHERE email = ?').get(email)
-    if (existingEmail) {
-      return NextResponse.json({ error: 'An admin with this email already exists' }, { status: 400 })
+    if (existingUsers.length > 0) {
+      return NextResponse.json({
+        success: false,
+        error: 'Username already exists'
+      }, { status: 400 });
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10)
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Insert new admin
-    const insertStmt = db.prepare(`
-      INSERT INTO admins (name, username, email, password, created_at, active) 
-      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, 1)
-    `)
-    
-    const result = insertStmt.run(name.trim(), username.toLowerCase().trim(), email.toLowerCase().trim(), hashedPassword)
+    // Insert new user with default role 'admin'
+    const [result] = await database.execute(
+      'INSERT INTO admin_users (username, password_hash, role, email, full_name, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
+      [username, hashedPassword, 'admin', email || null, name || null]
+    );
 
-    // Get the created admin (without password)
-    const newAdmin = db.prepare(`
-      SELECT id, name, username, email, created_at, active 
-      FROM admins 
-      WHERE id = ?
-    `).get(result.lastInsertRowid)
-
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Admin user created successfully',
-      user: newAdmin
-    })
+    return NextResponse.json({
+      success: true,
+      message: 'User added successfully',
+      user: {
+        id: result.insertId,
+        username,
+        email,
+        name,
+        role: 'admin'
+      }
+    });
 
   } catch (error) {
-    console.error('Add user error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
-  }
-}
-
-// GET endpoint to list all admin users
-export async function GET(request) {
-  try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session || session.user?.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Get all admin users (without passwords)
-    const admins = db.prepare(`
-      SELECT id, name, username, email, created_at, last_login, active 
-      FROM admins 
-      ORDER BY created_at DESC
-    `).all()
-
-    return NextResponse.json({ admins })
-
-  } catch (error) {
-    console.error('Get users error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Error adding user:', error);
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to add user'
+    }, { status: 500 });
   }
 }

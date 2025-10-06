@@ -31,7 +31,20 @@
       "mcp__playwright__browser_take_screenshot",
       "mcp__playwright__browser_navigate",
       "mcp__playwright__browser_wait_for",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_handle_dialog",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_select_option",
+      "mcp__playwright__browser_close",
+      "Bash(dir:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(find:*)",
+      "mcp__playwright__browser_fill_form",
+      "Bash(mysql:*)",
+      "Bash(timeout:*)",
+      "mcp__playwright__browser_console_messages"
     ],
     "deny": [],
     "ask": []

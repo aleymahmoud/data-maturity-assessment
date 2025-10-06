@@ -6,57 +6,74 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const language = searchParams.get('lang') || 'en';
     const assessmentCode = searchParams.get('code');
-    
+
     const db = await openDatabase();
-    
-    // Get assessment type for this code
-    let assessmentType = 'full'; // default
+
+    // Get snapshotted question list from assessment code
+    let questionList = [];
     if (assessmentCode) {
-      const codeData = await db.get(`
-        SELECT assessment_type FROM assessment_codes WHERE code = ?
+      const [rows] = await db.execute(`
+        SELECT question_list, assessment_type FROM assessment_codes WHERE code = ?
       `, [assessmentCode]);
-      assessmentType = codeData?.assessment_type || 'full';
+
+      const codeData = rows[0];
+      if (codeData && codeData.question_list) {
+        // MySQL JSON column is already parsed, no need for JSON.parse()
+        questionList = Array.isArray(codeData.question_list) ? codeData.question_list : JSON.parse(codeData.question_list);
+      }
     }
-    
-    // Build query based on assessment type
-    let questionQuery = `
-      SELECT 
-        q.id,
-        q.subdomain_id as subdomain,
-        q.title_en,
-        q.title_ar,
-        q.text_en,
-        q.text_ar,
-        q.scenario_en,
-        q.scenario_ar,
-        q.icon,
-        q.priority
-      FROM questions q
-    `;
-    
-    // Filter questions for quick assessment
-    if (assessmentType === 'quick') {
-      questionQuery += ` WHERE q.priority = 1`;
+
+    // If no question list found, fall back to all questions (for backward compatibility)
+    if (questionList.length === 0) {
+      const [allQuestions] = await db.execute(`
+        SELECT id FROM questions ORDER BY display_order
+      `);
+      questionList = allQuestions.map(q => q.id);
     }
-    
-    questionQuery += ` ORDER BY CAST(REPLACE(q.id, 'Q', '') AS INTEGER)`;
-    
-    const questions = await db.all(questionQuery);
+
+    // Build query to get only the snapshotted questions
+    let questionRows = [];
+    if (questionList.length > 0) {
+      const placeholders = questionList.map(() => '?').join(',');
+      const questionQuery = `
+        SELECT
+          q.id,
+          q.subdomain_id as subdomain,
+          q.title_en,
+          q.title_ar,
+          q.text_en,
+          q.text_ar,
+          q.scenario_en,
+          q.scenario_ar,
+          q.icon,
+          q.priority
+        FROM questions q
+        WHERE q.id IN (${placeholders})
+        ORDER BY CAST(REPLACE(q.id, 'Q', '') AS UNSIGNED)
+      `;
+
+      const [results] = await db.execute(questionQuery, questionList);
+      questionRows = results;
+    }
+
+    const questions = questionRows;
 
     // Get options for each question
     const questionsWithOptions = await Promise.all(
       questions.map(async (question) => {
-        const options = await db.all(`
-          SELECT 
+        const [optionRows] = await db.execute(`
+          SELECT
             option_key,
             option_text_en,
             option_text_ar,
             score_value as value,
             display_order
-          FROM question_options 
+          FROM question_options
           WHERE question_id = ?
           ORDER BY display_order
         `, [question.id]);
+
+        const options = optionRows;
 
         // Separate scoring options (A,B,C,D,E) from NA/NS
         const scoringOptions = options.filter(opt => !['NA', 'NS'].includes(opt.option_key));

@@ -6,11 +6,18 @@ import { markCodeAsUsed, saveAssessmentResponses, openDatabase } from '../../../
 async function calculateScores(sessionId) {
   try {
     const database = await openDatabase();
-    
+
+    // Get session total_questions
+    const [sessionInfo] = await database.execute(`
+      SELECT total_questions FROM assessment_sessions WHERE id = ?
+    `, [sessionId]);
+
+    const totalQuestions = sessionInfo[0]?.total_questions || 35;
+
     // Get all responses for this session (excluding NA/NS)
     console.log('Fetching responses for session:', sessionId);
-    const responses = await database.all(`
-      SELECT 
+    const [responses] = await database.execute(`
+      SELECT
         ur.question_id,
         ur.score_value,
         q.subdomain_id
@@ -27,7 +34,7 @@ async function calculateScores(sessionId) {
     if (responses.length === 0) {
       console.log('No valid responses found for score calculation');
       // Let's also check if there are any responses at all for this session
-      const allResponses = await database.all(`
+      const [allResponses] = await database.execute(`
         SELECT question_id, score_value FROM user_responses WHERE session_id = ?
       `, [sessionId]);
       console.log('All responses for session (including NA/NS):', allResponses.length);
@@ -56,12 +63,19 @@ async function calculateScores(sessionId) {
       else if (rawScore >= 1.9) maturityLevel = 'Developing';
 
       // Insert subdomain score
-      await database.run(`
-        INSERT OR REPLACE INTO session_scores (
-          id, session_id, subdomain_id, score_type, 
+      await database.execute(`
+        INSERT INTO session_scores (
+          id, session_id, subdomain_id, score_type,
           raw_score, percentage_score, maturity_level,
           questions_answered, total_questions, calculated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        ON DUPLICATE KEY UPDATE
+          raw_score = VALUES(raw_score),
+          percentage_score = VALUES(percentage_score),
+          maturity_level = VALUES(maturity_level),
+          questions_answered = VALUES(questions_answered),
+          total_questions = VALUES(total_questions),
+          calculated_at = VALUES(calculated_at)
       `, [
         `${sessionId}_${subdomainId}_subdomain`,
         sessionId,
@@ -87,12 +101,19 @@ async function calculateScores(sessionId) {
     else if (overallRawScore >= 1.9) overallMaturityLevel = 'Developing';
 
     // Insert overall score
-    await database.run(`
-      INSERT OR REPLACE INTO session_scores (
-        id, session_id, score_type, 
+    await database.execute(`
+      INSERT INTO session_scores (
+        id, session_id, score_type,
         raw_score, percentage_score, maturity_level,
         questions_answered, total_questions, calculated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+      ON DUPLICATE KEY UPDATE
+        raw_score = VALUES(raw_score),
+        percentage_score = VALUES(percentage_score),
+        maturity_level = VALUES(maturity_level),
+        questions_answered = VALUES(questions_answered),
+        total_questions = VALUES(total_questions),
+        calculated_at = VALUES(calculated_at)
     `, [
       `${sessionId}_overall`,
       sessionId,
@@ -101,7 +122,7 @@ async function calculateScores(sessionId) {
       parseFloat(overallPercentage.toFixed(1)),
       overallMaturityLevel,
       allSubdomainScores.length,
-      35
+      totalQuestions
     ]);
 
     console.log('Scores calculated successfully for session:', sessionId);
@@ -113,8 +134,16 @@ async function calculateScores(sessionId) {
 export async function POST(request) {
   try {
     const { code, sessionId, responses } = await request.json();
-    
+
+    console.log('🏁 COMPLETE-ASSESSMENT API CALLED:', {
+      code,
+      sessionId,
+      responseCount: Object.keys(responses || {}).length,
+      timestamp: new Date().toISOString()
+    });
+
     if (!code || !sessionId || !responses) {
+      console.log('❌ COMPLETE-ASSESSMENT - Missing required data');
       return NextResponse.json({
         success: false,
         error: 'Code, session ID, and responses are required'
@@ -123,8 +152,11 @@ export async function POST(request) {
 
     // First save all responses with assessment code
     const saveResult = await saveAssessmentResponses(sessionId, responses, code);
-    
+
+    console.log('📊 SAVE RESULT IN COMPLETE:', saveResult);
+
     if (!saveResult.success) {
+      console.log('❌ COMPLETE-ASSESSMENT - Save failed:', saveResult.error);
       return NextResponse.json({
         success: false,
         error: 'Failed to save responses: ' + saveResult.error
@@ -132,19 +164,24 @@ export async function POST(request) {
     }
 
     // Calculate scores after saving responses
-    console.log('Starting score calculation for session:', sessionId);
+    console.log('📈 Starting score calculation for session:', sessionId);
     await calculateScores(sessionId);
 
     // Then mark code as used and session as completed
+    console.log('🔒 Marking code as used:', code);
     const completeResult = await markCodeAsUsed(code, sessionId);
-    
+
+    console.log('📋 COMPLETE RESULT:', completeResult);
+
     if (!completeResult.success) {
+      console.log('❌ COMPLETE-ASSESSMENT - Mark as used failed:', completeResult.error);
       return NextResponse.json({
         success: false,
         error: 'Failed to complete assessment: ' + completeResult.error
       }, { status: 500 });
     }
 
+    console.log('✅ COMPLETE-ASSESSMENT SUCCESS');
     return NextResponse.json({
       success: true,
       message: 'Assessment completed successfully',

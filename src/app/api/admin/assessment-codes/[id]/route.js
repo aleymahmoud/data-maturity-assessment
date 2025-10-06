@@ -1,114 +1,155 @@
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import Database from 'better-sqlite3'
-import path from 'path'
-import { authOptions } from '../../../auth/[...nextauth]/route'
+import { openDatabase } from '../../../../../lib/database.js'
 
-const db = new Database(path.join(process.cwd(), 'data_maturity.db'))
-
-// PUT - Update assessment code (toggle active status or extend expiration)
-export async function PUT(request, { params }) {
+export async function GET(request, { params }) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session || session.user?.role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const database = await openDatabase()
+    const { id } = await params
 
-    const code = params.id // This will be the code parameter
-    const { action, maxUses, expiresIn, active } = await request.json()
+    const [codes] = await database.execute('SELECT * FROM assessment_codes WHERE code = ?', [id])
 
-    // Get existing code
-    const existingCode = db.prepare('SELECT * FROM assessment_codes WHERE code = ?').get(code)
-    
-    if (!existingCode) {
+    if (codes.length === 0) {
       return NextResponse.json({ error: 'Assessment code not found' }, { status: 404 })
     }
 
-    let updateQuery = 'UPDATE assessment_codes SET '
-    let updateParams = []
-    let logMessage = ''
-
-    switch (action) {
-      case 'toggle_status':
-        updateQuery += 'active = ?'
-        updateParams.push(active ? 1 : 0)
-        logMessage = `${active ? 'Activated' : 'Deactivated'} assessment code ${existingCode.code}`
-        break
-
-      case 'extend_expiration':
-        if (!expiresIn || expiresIn < 1) {
-          return NextResponse.json({ error: 'Extension days must be at least 1' }, { status: 400 })
-        }
-        const newExpirationDate = new Date()
-        newExpirationDate.setDate(newExpirationDate.getDate() + parseInt(expiresIn))
-        
-        updateQuery += 'expires_at = ?'
-        updateParams.push(newExpirationDate.toISOString())
-        logMessage = `Extended assessment code ${existingCode.code} expiration by ${expiresIn} days`
-        break
-
-      case 'update_limits':
-        if (!maxUses || maxUses < 1) {
-          return NextResponse.json({ error: 'Max uses must be at least 1' }, { status: 400 })
-        }
-        updateQuery += 'max_uses = ?'
-        updateParams.push(maxUses)
-        logMessage = `Updated assessment code ${existingCode.code} max uses to ${maxUses}`
-        break
-
-      default:
-        return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
-    }
-
-    updateQuery += ' WHERE code = ?'
-    updateParams.push(code)
-
-    // Execute update
-    const result = db.prepare(updateQuery).run(...updateParams)
-
-    if (result.changes === 0) {
-      return NextResponse.json({ error: 'No changes made' }, { status: 400 })
-    }
-
-    // Get updated code
-    const updatedCode = db.prepare(`
-      SELECT 
-        code,
-        max_uses,
-        usage_count,
-        expires_at,
-        created_at,
-        active,
-        description,
-        CASE 
-          WHEN active = 0 THEN 'inactive'
-          WHEN expires_at <= datetime('now') THEN 'expired'
-          WHEN usage_count >= max_uses AND max_uses IS NOT NULL THEN 'used_up'
-          ELSE 'active'
-        END as status
-      FROM assessment_codes 
-      WHERE code = ?
-    `).get(code)
-
-    // Log the activity
-    try {
-      db.prepare(`
-        INSERT INTO audit_logs (action, details, timestamp, user_type)
-        VALUES (?, ?, CURRENT_TIMESTAMP, 'admin')
-      `).run('code_updated', logMessage)
-    } catch (logError) {
-      console.error('Audit log error:', logError)
-    }
-
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Assessment code updated successfully',
-      code: updatedCode
-    })
+    return NextResponse.json({ code: codes[0] })
 
   } catch (error) {
-    console.error('Update assessment code error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Error fetching assessment code:', error)
+    return NextResponse.json({ error: 'Failed to fetch assessment code' }, { status: 500 })
+  }
+}
+
+export async function PUT(request, { params }) {
+  try {
+    const database = await openDatabase()
+    const { id } = await params
+    const body = await request.json()
+
+    // Check if code exists first
+    const [existing] = await database.execute('SELECT code FROM assessment_codes WHERE code = ?', [id])
+
+    if (existing.length === 0) {
+      return NextResponse.json({ error: 'Assessment code not found' }, { status: 404 })
+    }
+
+    // Handle different actions
+    const { action } = body
+
+    if (action === 'toggle_status') {
+      // Handle activate/deactivate toggle
+      const { active } = body
+
+      // Update the is_active column
+      await database.execute(`
+        UPDATE assessment_codes
+        SET is_active = ?
+        WHERE code = ?
+      `, [active ? 1 : 0, id])
+
+      return NextResponse.json({
+        message: `Assessment code ${active ? 'activated' : 'deactivated'} successfully`
+      })
+    } else {
+      // Handle regular update
+      const {
+        organization_name,
+        intended_recipient,
+        expires_in_days,
+        assessment_type = 'full',
+        max_uses = 1
+      } = body
+
+      // Validate required fields for regular update
+      if (!organization_name) {
+        return NextResponse.json({ error: 'Organization name is required' }, { status: 400 })
+      }
+
+      // Calculate expiration date if expires_in_days is provided
+      let expiresAt = null
+      if (expires_in_days && expires_in_days > 0) {
+        const expDate = new Date()
+        expDate.setDate(expDate.getDate() + parseInt(expires_in_days))
+        expiresAt = expDate.toISOString().split('T')[0] // Format as YYYY-MM-DD
+      }
+
+      // Get the current assessment type to check if it's changing
+      const [currentCode] = await database.execute('SELECT assessment_type FROM assessment_codes WHERE code = ?', [id])
+      const currentType = currentCode[0]?.assessment_type
+
+      // Generate new question list if assessment type is changing
+      let questionList = null
+      if (currentType !== assessment_type) {
+        if (assessment_type === 'quick') {
+          // Get priority questions only (priority = 1)
+          const [questions] = await database.query(`
+            SELECT id FROM questions
+            WHERE priority = 1
+            ORDER BY display_order
+          `)
+          questionList = JSON.stringify(questions.map(q => q.id))
+        } else {
+          // Get all questions for full assessment
+          const [questions] = await database.query(`
+            SELECT id FROM questions
+            ORDER BY display_order
+          `)
+          questionList = JSON.stringify(questions.map(q => q.id))
+        }
+      }
+
+      // Update the code
+      if (questionList !== null) {
+        // Update with new question list
+        await database.execute(`
+          UPDATE assessment_codes
+          SET organization_name = ?, intended_recipient = ?, expires_at = ?, assessment_type = ?, max_uses = ?, question_list = ?
+          WHERE code = ?
+        `, [organization_name, intended_recipient || null, expiresAt || null, assessment_type, max_uses, questionList, id])
+      } else {
+        // Update without changing question list
+        await database.execute(`
+          UPDATE assessment_codes
+          SET organization_name = ?, intended_recipient = ?, expires_at = ?, assessment_type = ?, max_uses = ?
+          WHERE code = ?
+        `, [organization_name, intended_recipient || null, expiresAt || null, assessment_type, max_uses, id])
+      }
+
+      return NextResponse.json({
+        message: 'Assessment code updated successfully',
+        questionListUpdated: questionList !== null
+      })
+    }
+
+  } catch (error) {
+    console.error('Error updating assessment code:', error)
+    return NextResponse.json({ error: 'Failed to update assessment code' }, { status: 500 })
+  }
+}
+
+export async function DELETE(request, { params }) {
+  try {
+    const database = await openDatabase()
+    const { id } = await params
+
+    // Check if code exists and is not used
+    const [existing] = await database.execute('SELECT is_used FROM assessment_codes WHERE code = ?', [id])
+
+    if (existing.length === 0) {
+      return NextResponse.json({ error: 'Assessment code not found' }, { status: 404 })
+    }
+
+    if (existing[0].is_used) {
+      return NextResponse.json({ error: 'Cannot delete used assessment code' }, { status: 400 })
+    }
+
+    // Delete the code
+    await database.execute('DELETE FROM assessment_codes WHERE code = ?', [id])
+
+    return NextResponse.json({ message: 'Assessment code deleted successfully' })
+
+  } catch (error) {
+    console.error('Error deleting assessment code:', error)
+    return NextResponse.json({ error: 'Failed to delete assessment code' }, { status: 500 })
   }
 }

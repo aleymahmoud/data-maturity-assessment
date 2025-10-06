@@ -16,7 +16,7 @@ export default function AdminLogin() {
 
   useEffect(() => {
     // Only redirect if we have a valid admin session
-    if (status === 'authenticated' && session?.user?.role === 'admin') {
+    if (status === 'authenticated' && (session?.user?.role === 'admin' || session?.user?.role === 'super_admin')) {
       router.push('/admin/dashboard')
     }
   }, [session, status, router])

@@ -19,7 +19,7 @@ export default function AdminLayout({ children }) {
     // Redirect to login if not authenticated
     if (status === 'loading') return // Still checking
     
-    if (!session || session.user?.role !== 'admin') {
+    if (!session || (session.user?.role !== 'admin' && session.user?.role !== 'super_admin')) {
       router.push('/admin/login')
     }
   }, [session, status, router, pathname])
@@ -65,7 +65,7 @@ export default function AdminLayout({ children }) {
   }
 
   // Show login page if not authenticated
-  if (!session || session.user?.role !== 'admin') {
+  if (!session || (session.user?.role !== 'admin' && session.user?.role !== 'super_admin')) {
     return null // Will redirect via useEffect
   }
 

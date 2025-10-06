@@ -8,7 +8,7 @@ async function calculateScoresForSession(sessionId, database) {
     console.log('Calculating scores for session:', sessionId);
     
     // Get all responses for this session (excluding NA/NS)
-    const responses = await database.all(`
+    const [responses] = await database.execute(`
       SELECT 
         ur.question_id,
         ur.score_value,
@@ -47,12 +47,19 @@ async function calculateScoresForSession(sessionId, database) {
       else if (rawScore >= 1.9) maturityLevel = 'Developing';
 
       // Insert subdomain score
-      await database.run(`
-        INSERT OR REPLACE INTO session_scores (
-          id, session_id, subdomain_id, score_type, 
+      await database.execute(`
+        INSERT INTO session_scores (
+          id, session_id, subdomain_id, score_type,
           raw_score, percentage_score, maturity_level,
           questions_answered, total_questions, calculated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        ON DUPLICATE KEY UPDATE
+          raw_score = VALUES(raw_score),
+          percentage_score = VALUES(percentage_score),
+          maturity_level = VALUES(maturity_level),
+          questions_answered = VALUES(questions_answered),
+          total_questions = VALUES(total_questions),
+          calculated_at = VALUES(calculated_at)
       `, [
         `${sessionId}_${subdomainId}_subdomain`,
         sessionId,
@@ -78,12 +85,19 @@ async function calculateScoresForSession(sessionId, database) {
     else if (overallRawScore >= 1.9) overallMaturityLevel = 'Developing';
 
     // Insert overall score
-    await database.run(`
-      INSERT OR REPLACE INTO session_scores (
-        id, session_id, score_type, 
+    await database.execute(`
+      INSERT INTO session_scores (
+        id, session_id, score_type,
         raw_score, percentage_score, maturity_level,
         questions_answered, total_questions, calculated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+      ON DUPLICATE KEY UPDATE
+        raw_score = VALUES(raw_score),
+        percentage_score = VALUES(percentage_score),
+        maturity_level = VALUES(maturity_level),
+        questions_answered = VALUES(questions_answered),
+        total_questions = VALUES(total_questions),
+        calculated_at = VALUES(calculated_at)
     `, [
       `${sessionId}_overall`,
       sessionId,
@@ -120,12 +134,12 @@ export async function GET(request) {
     const database = await openDatabase();
     
     // Get user data and session info
-    const sessionData = await database.get(`
-      SELECT 
-        s.*, 
-        u.name, 
-        u.email, 
-        u.organization, 
+    const [sessionRows] = await database.execute(`
+      SELECT
+        s.*,
+        u.name,
+        u.email,
+        u.organization,
         u.role_title,
         r.name_${language} as role_name
       FROM assessment_sessions s
@@ -133,6 +147,7 @@ export async function GET(request) {
       LEFT JOIN roles r ON u.selected_role_id = r.id
       WHERE s.id = ?
     `, [sessionId]);
+    const sessionData = sessionRows[0];
 
     if (!sessionData) {
       return NextResponse.json({
@@ -142,9 +157,10 @@ export async function GET(request) {
     }
 
     // Get ALL subdomains (assessed and unassessed)
-      const allSubdomains = await database.all(`
-        SELECT 
+      const [allSubdomains] = await database.execute(`
+        SELECT
           sd.id,
+          sd.domain_id,
           sd.name_${language} as name,
           sd.description_${language} as description,
           sd.display_order,
@@ -153,11 +169,19 @@ export async function GET(request) {
           COALESCE(s.questions_answered, 0) as questions_answered,
           COALESCE(s.total_questions, 0) as total_questions
         FROM subdomains sd
-        LEFT JOIN session_scores s ON sd.id = s.subdomain_id 
-          AND s.session_id = ? 
+        LEFT JOIN session_scores s ON sd.id = s.subdomain_id
+          AND s.session_id = ?
           AND s.score_type = 'subdomain'
         ORDER BY sd.display_order
       `, [sessionId]);
+
+    // Ensure numeric values for scores
+    allSubdomains.forEach(domain => {
+      domain.score = parseFloat(domain.score) || 0;
+      domain.percentage = parseFloat(domain.percentage) || 0;
+      domain.questions_answered = parseInt(domain.questions_answered) || 0;
+      domain.total_questions = parseInt(domain.total_questions) || 0;
+    });
 
     // Calculate overall score including zeros for unassessed domains
     const totalScore = allSubdomains.reduce((sum, domain) => sum + domain.score, 0);
@@ -172,79 +196,100 @@ export async function GET(request) {
 
     // Get total questions answered across all domains
     let totalQuestionsAnswered = allSubdomains.reduce((sum, domain) => sum + domain.questions_answered, 0);
-    
-    // Get dynamic total questions count based on assessment type
-    const assessmentCode = searchParams.get('code');
-    let totalQuestions = 35; // Default for full assessment
-    
+
+    // Get dynamic total questions count from session
+    let totalQuestions = parseInt(sessionData.total_questions) || 35;
+
+    console.log('📊 Questions Summary:', {
+      sessionTotalQuestions: sessionData.total_questions,
+      calculatedTotalAnswered: totalQuestionsAnswered,
+      assessmentCode: sessionData.code
+    });
+
+    // Alternatively, get from assessment code
+    const assessmentCode = sessionData.code;
     if (assessmentCode) {
-      const codeData = await database.get(`
+      const [codeRows] = await database.execute(`
         SELECT assessment_type FROM assessment_codes WHERE code = ?
       `, [assessmentCode]);
-      
+      const codeData = codeRows[0];
+
       if (codeData?.assessment_type === 'quick') {
         // Count priority questions for quick assessment
-        const quickCount = await database.get(`
+        const [quickCountRows] = await database.execute(`
           SELECT COUNT(*) as count FROM questions WHERE priority = 1
         `);
-        totalQuestions = quickCount?.count || 35;
+        const quickCount = quickCountRows[0];
+        totalQuestions = parseInt(quickCount?.count) || totalQuestions;
       }
     }
     
-    // If no session_scores data exists, calculate from user_responses directly
-    if (totalQuestionsAnswered === 0) {
-      console.log('No session_scores found, checking user_responses directly');
-      const responsesCount = await database.get(`
-        SELECT COUNT(*) as count 
-        FROM user_responses ur
-        WHERE ur.session_id = ? AND ur.score_value > 0
-      `, [sessionId]);
-      
-      console.log('Direct user_responses count:', responsesCount);
-      totalQuestionsAnswered = responsesCount?.count || 0;
-      
-      // Let's also check if there are any responses at all for this session
-      const allResponsesCount = await database.get(`
-        SELECT COUNT(*) as count FROM user_responses WHERE session_id = ?
-      `, [sessionId]);
-      console.log('All responses for session (including NA/NS):', allResponsesCount);
-      
-      // If we have responses but no scores, calculate them now
-      if (totalQuestionsAnswered > 0) {
-        console.log('Found responses but no calculated scores. Calculating now...');
-        await calculateScoresForSession(sessionId, database);
-        
-        // Refresh the subdomain data after calculation
-        const refreshedSubdomains = await database.all(`
-          SELECT 
-            sd.id,
-            sd.name_${language} as name,
-            sd.description_${language} as description,
-            sd.display_order,
-            COALESCE(s.raw_score, 0) as score,
-            COALESCE(s.percentage_score, 0) as percentage,
-            COALESCE(s.questions_answered, 0) as questions_answered,
-            COALESCE(s.total_questions, 0) as total_questions
-          FROM subdomains sd
-          LEFT JOIN session_scores s ON sd.id = s.subdomain_id 
-            AND s.session_id = ? 
-            AND s.score_type = 'subdomain'
-          ORDER BY sd.display_order
-        `, [sessionId]);
-        
-        // Update variables with fresh data
-        const newTotalScore = refreshedSubdomains.reduce((sum, domain) => sum + domain.score, 0);
-        overallScore = refreshedSubdomains.length > 0 ? newTotalScore / refreshedSubdomains.length : 0;
-        allSubdomains.splice(0, allSubdomains.length, ...refreshedSubdomains);
-        
-        // Recalculate maturity level
-        if (overallScore >= 4.3) maturityLevel = 'Optimized';
-        else if (overallScore >= 3.5) maturityLevel = 'Advanced';
-        else if (overallScore >= 2.7) maturityLevel = 'Defined';
-        else if (overallScore >= 1.9) maturityLevel = 'Developing';
-        else maturityLevel = 'Initial';
-      }
+    // Always check user_responses for accurate count
+    const [responsesCountRows] = await database.execute(`
+      SELECT COUNT(*) as count
+      FROM user_responses
+      WHERE session_id = ?
+    `, [sessionId]);
+    const actualResponsesCount = parseInt(responsesCountRows[0]?.count) || 0;
+
+    console.log('📝 Actual responses in database:', actualResponsesCount);
+
+    // Use the actual count from user_responses (more reliable)
+    if (actualResponsesCount > 0) {
+      totalQuestionsAnswered = actualResponsesCount;
     }
+
+    // If no session_scores data exists, calculate scores now
+    if (allSubdomains.every(domain => domain.questions_answered === 0) && actualResponsesCount > 0) {
+      console.log('Found responses but no calculated scores. Calculating now...');
+      await calculateScoresForSession(sessionId, database);
+
+      // Refresh the subdomain data after calculation
+      const [refreshedSubdomains] = await database.execute(`
+        SELECT
+          sd.id,
+          sd.name_${language} as name,
+          sd.description_${language} as description,
+          sd.display_order,
+          COALESCE(s.raw_score, 0) as score,
+          COALESCE(s.percentage_score, 0) as percentage,
+          COALESCE(s.questions_answered, 0) as questions_answered,
+          COALESCE(s.total_questions, 0) as total_questions
+        FROM subdomains sd
+        LEFT JOIN session_scores s ON sd.id = s.subdomain_id
+          AND s.session_id = ?
+          AND s.score_type = 'subdomain'
+        ORDER BY sd.display_order
+      `, [sessionId]);
+
+      // Ensure numeric values for refreshed scores
+      refreshedSubdomains.forEach(domain => {
+        domain.score = parseFloat(domain.score) || 0;
+        domain.percentage = parseFloat(domain.percentage) || 0;
+        domain.questions_answered = parseInt(domain.questions_answered) || 0;
+        domain.total_questions = parseInt(domain.total_questions) || 0;
+      });
+
+      // Update variables with fresh data
+      const newTotalScore = refreshedSubdomains.reduce((sum, domain) => sum + domain.score, 0);
+      overallScore = refreshedSubdomains.length > 0 ? newTotalScore / refreshedSubdomains.length : 0;
+      allSubdomains.splice(0, allSubdomains.length, ...refreshedSubdomains);
+
+      // Recalculate maturity level
+      if (overallScore >= 4.3) maturityLevel = 'Optimized';
+      else if (overallScore >= 3.5) maturityLevel = 'Advanced';
+      else if (overallScore >= 2.7) maturityLevel = 'Defined';
+      else if (overallScore >= 1.9) maturityLevel = 'Developing';
+      else maturityLevel = 'Initial';
+    }
+
+    console.log('✅ Final Results Summary:', {
+      overallScore: parseFloat(overallScore.toFixed(1)),
+      maturityLevel,
+      questionsAnswered: totalQuestionsAnswered,
+      totalQuestions,
+      completionRate: Math.round((totalQuestionsAnswered / totalQuestions) * 100)
+    });
 
     return NextResponse.json({
       success: true,
