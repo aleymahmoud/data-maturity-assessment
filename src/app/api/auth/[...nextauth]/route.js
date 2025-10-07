@@ -94,4 +94,4 @@ const authOptions = {
 
 const handler = NextAuth.default ? NextAuth.default(authOptions) : NextAuth(authOptions)
 
-export { handler as GET, handler as POST }
+export { handler as GET, handler as POST, authOptions }

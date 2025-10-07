@@ -4,10 +4,10 @@ import { useState, useRef, useEffect } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { 
-  Settings, 
-  BarChart3, 
-  Users, 
+import {
+  Settings,
+  BarChart3,
+  Users,
   Code,
   Menu,
   X,
@@ -18,7 +18,8 @@ import {
   User,
   ChevronDown,
   Key,
-  UserPlus
+  UserPlus,
+  FileText
 } from 'lucide-react'
 import PasswordChangeModal from '../../components/PasswordChangeModal'
 import AddUserModal from '../../components/AddUserModal'
@@ -39,6 +40,12 @@ export default function AdminSidebarLayout({ children }) {
       description: 'Overview & statistics',
       href: '/admin/dashboard',
       icon: BarChart3,
+    },
+    {
+      title: 'Organization Requests',
+      description: 'Assessment requests',
+      href: '/admin/org-requests',
+      icon: FileText,
     },
     {
       title: 'Assessment Codes',
