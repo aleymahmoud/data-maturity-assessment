@@ -262,7 +262,7 @@ export async function GET(request) {
         u.email,
         u.organization,
         u.role_title,
-        r.name_${language} as role_name
+        r.title as role_name
       FROM assessment_sessions s
       JOIN users u ON s.user_id = u.id
       LEFT JOIN roles r ON u.selected_role_id = r.id
@@ -282,8 +282,8 @@ export async function GET(request) {
     const [subdomainScores] = await database.execute(`
       SELECT
         sd.id,
-        sd.name_${language} as name,
-        sd.description_${language} as description,
+        sd.${language === 'ar' ? 'name_ar' : 'name_en'} as name,
+        sd.${language === 'ar' ? 'description_ar' : 'description_en'} as description,
         COALESCE(s.raw_score, 0) as score,
         COALESCE(s.percentage_score, 0) as percentage,
         COALESCE(s.questions_answered, 0) as questions_answered,
@@ -1029,7 +1029,7 @@ export async function GET(request) {
       await chartPage.setViewport({ width: 1200, height: 800 });
 
       // Navigate to the results page
-      const resultsUrl = `http://localhost:3001/results?session=${sessionId}&lang=${language}`;
+      const resultsUrl = `http://localhost:3001/dma/results?session=${sessionId}&lang=${language}`;
       await chartPage.goto(resultsUrl, { waitUntil: 'networkidle2', timeout: 60000 });
 
       // Wait for the chart to render

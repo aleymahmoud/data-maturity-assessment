@@ -48,12 +48,6 @@ export default function SystemSettingsPage() {
       description: 'Manage user roles and domain subdivisions'
     },
     {
-      id: 'assessment',
-      name: 'Assessment Config',
-      icon: Sliders,
-      description: 'Configure assessment types and rules'
-    },
-    {
       id: 'languages',
       name: 'Languages',
       icon: Globe,
@@ -100,8 +94,6 @@ export default function SystemSettingsPage() {
         return <QuestionsOptionsTab />;
       case 'roles':
         return <RolesSubdomainsTab />;
-      case 'assessment':
-        return <AssessmentConfigTab />;
       case 'languages':
         return <LanguagesTab />;
       case 'notifications':
@@ -588,65 +580,1093 @@ function QuestionsOptionsTab() {
 }
 
 function RolesSubdomainsTab() {
-  return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '400px',
-      flexDirection: 'column',
-      gap: '16px'
-    }}>
-      <Users size={48} color="#9ca3af" />
-      <div style={{ textAlign: 'center' }}>
-        <h3 style={{
-          fontSize: '18px',
-          fontWeight: '600',
-          color: '#111827',
-          margin: '0 0 8px 0'
-        }}>
-          Roles & Subdomains
-        </h3>
-        <p style={{
-          fontSize: '14px',
-          color: '#6b7280',
-          margin: 0
-        }}>
-          Content coming soon - manage user roles and domain subdivisions
-        </p>
-      </div>
-    </div>
-  );
-}
+  const [activeSubTab, setActiveSubTab] = useState('roles');
+  const [roles, setRoles] = useState([]);
+  const [subdomains, setSubdomains] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [editingRole, setEditingRole] = useState(null);
+  const [editingSubdomain, setEditingSubdomain] = useState(null);
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('');
 
-function AssessmentConfigTab() {
+  useEffect(() => {
+    fetchRoles();
+    fetchSubdomains();
+  }, []);
+
+  const fetchRoles = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/admin/roles');
+      const data = await response.json();
+      if (data.success) {
+        setRoles(data.roles);
+      }
+    } catch (error) {
+      console.error('Error fetching roles:', error);
+      showMessage('Error loading roles', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSubdomains = async () => {
+    try {
+      const response = await fetch('/api/admin/subdomains');
+      const data = await response.json();
+      if (data.success) {
+        setSubdomains(data.subdomains);
+      }
+    } catch (error) {
+      console.error('Error fetching subdomains:', error);
+      showMessage('Error loading subdomains', 'error');
+    }
+  };
+
+  const showMessage = (text, type) => {
+    setMessage(text);
+    setMessageType(type);
+    setTimeout(() => {
+      setMessage('');
+      setMessageType('');
+    }, 3000);
+  };
+
+  const handleSaveRole = async () => {
+    try {
+      const url = editingRole?.id ? `/api/admin/roles/${editingRole.id}` : '/api/admin/roles';
+      const method = editingRole?.id ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingRole)
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        showMessage(editingRole?.id ? 'Role updated successfully' : 'Role created successfully', 'success');
+        setEditingRole(null);
+        fetchRoles();
+      } else {
+        showMessage(data.error || 'Error saving role', 'error');
+      }
+    } catch (error) {
+      console.error('Error saving role:', error);
+      showMessage('Error saving role', 'error');
+    }
+  };
+
+  const handleDeleteRole = async (roleId) => {
+    if (!confirm('Are you sure you want to delete this role? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/roles/${roleId}`, {
+        method: 'DELETE'
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        showMessage('Role deleted successfully', 'success');
+        fetchRoles();
+      } else {
+        showMessage(data.error || 'Error deleting role', 'error');
+      }
+    } catch (error) {
+      console.error('Error deleting role:', error);
+      showMessage('Error deleting role', 'error');
+    }
+  };
+
+  const handleSaveSubdomain = async () => {
+    try {
+      const url = editingSubdomain?.id ? `/api/admin/subdomains/${editingSubdomain.id}` : '/api/admin/subdomains';
+      const method = editingSubdomain?.id ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingSubdomain)
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        showMessage(editingSubdomain?.id ? 'Subdomain updated successfully' : 'Subdomain created successfully', 'success');
+        setEditingSubdomain(null);
+        fetchSubdomains();
+      } else {
+        showMessage(data.error || 'Error saving subdomain', 'error');
+      }
+    } catch (error) {
+      console.error('Error saving subdomain:', error);
+      showMessage('Error saving subdomain', 'error');
+    }
+  };
+
+  const handleDeleteSubdomain = async (subdomainId) => {
+    if (!confirm('Are you sure you want to delete this subdomain? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/subdomains/${subdomainId}`, {
+        method: 'DELETE'
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        showMessage('Subdomain deleted successfully', 'success');
+        fetchSubdomains();
+      } else {
+        showMessage(data.error || 'Error deleting subdomain', 'error');
+      }
+    } catch (error) {
+      console.error('Error deleting subdomain:', error);
+      showMessage('Error deleting subdomain', 'error');
+    }
+  };
+
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '400px',
-      flexDirection: 'column',
-      gap: '16px'
-    }}>
-      <Sliders size={48} color="#9ca3af" />
-      <div style={{ textAlign: 'center' }}>
-        <h3 style={{
-          fontSize: '18px',
-          fontWeight: '600',
-          color: '#111827',
-          margin: '0 0 8px 0'
+    <div>
+      {/* Message Display */}
+      {message && (
+        <div style={{
+          padding: '12px 16px',
+          backgroundColor: messageType === 'success' ? '#f0fdf4' : '#fef2f2',
+          border: `1px solid ${messageType === 'success' ? '#86efac' : '#fca5a5'}`,
+          borderRadius: '6px',
+          marginBottom: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          color: messageType === 'success' ? '#166534' : '#991b1b'
         }}>
-          Assessment Configuration
-        </h3>
-        <p style={{
-          fontSize: '14px',
-          color: '#6b7280',
-          margin: 0
-        }}>
-          Content coming soon - configure assessment types and rules
-        </p>
+          {messageType === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+          <span style={{ fontSize: '14px' }}>{message}</span>
+        </div>
+      )}
+
+      {/* Sub Tabs */}
+      <div style={{
+        display: 'flex',
+        gap: '8px',
+        marginBottom: '24px',
+        borderBottom: '2px solid #f3f4f6',
+        paddingBottom: '0'
+      }}>
+        <button
+          onClick={() => setActiveSubTab('roles')}
+          style={{
+            padding: '12px 24px',
+            border: 'none',
+            backgroundColor: 'transparent',
+            color: activeSubTab === 'roles' ? '#7f7afe' : '#6b7280',
+            fontSize: '14px',
+            fontWeight: '500',
+            cursor: 'pointer',
+            borderBottom: activeSubTab === 'roles' ? '2px solid #7f7afe' : '2px solid transparent',
+            marginBottom: '-2px',
+            transition: 'all 0.2s'
+          }}>
+          Roles Management
+        </button>
+        <button
+          onClick={() => setActiveSubTab('subdomains')}
+          style={{
+            padding: '12px 24px',
+            border: 'none',
+            backgroundColor: 'transparent',
+            color: activeSubTab === 'subdomains' ? '#7f7afe' : '#6b7280',
+            fontSize: '14px',
+            fontWeight: '500',
+            cursor: 'pointer',
+            borderBottom: activeSubTab === 'subdomains' ? '2px solid #7f7afe' : '2px solid transparent',
+            marginBottom: '-2px',
+            transition: 'all 0.2s'
+          }}>
+          Subdomains Management
+        </button>
       </div>
+
+      {/* Roles Tab Content */}
+      {activeSubTab === 'roles' && (
+        <div>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '20px'
+          }}>
+            <h3 style={{
+              fontSize: '16px',
+              fontWeight: '600',
+              color: '#111827',
+              margin: 0
+            }}>
+              User Roles ({roles.length})
+            </h3>
+            <button
+              onClick={() => setEditingRole({
+                id: '',
+                title: '',
+                description: '',
+                examples: [],
+                estimatedTime: '',
+                icon: '',
+                subdomains: []
+              })}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 16px',
+                backgroundColor: '#7f7afe',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#6b6aef'}
+              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#7f7afe'}
+            >
+              <Plus size={16} />
+              Add Role
+            </button>
+          </div>
+
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+              Loading roles...
+            </div>
+          ) : (
+            <div style={{
+              display: 'grid',
+              gap: '16px'
+            }}>
+              {roles.map((role) => (
+                <div key={role.id} style={{
+                  padding: '20px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  backgroundColor: 'white'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'start',
+                    marginBottom: '12px'
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginBottom: '8px'
+                      }}>
+                        <span style={{ fontSize: '24px' }}>{role.icon}</span>
+                        <h4 style={{
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          color: '#111827',
+                          margin: 0
+                        }}>
+                          {role.title}
+                        </h4>
+                      </div>
+                      <p style={{
+                        fontSize: '14px',
+                        color: '#6b7280',
+                        margin: '0 0 8px 0'
+                      }}>
+                        {role.description}
+                      </p>
+                      <div style={{
+                        fontSize: '13px',
+                        color: '#9ca3af',
+                        marginBottom: '8px'
+                      }}>
+                        <strong>Examples:</strong> {Array.isArray(role.examples) ? role.examples.join(', ') : role.examples}
+                      </div>
+                      <div style={{
+                        fontSize: '13px',
+                        color: '#9ca3af',
+                        marginBottom: '8px'
+                      }}>
+                        <strong>Time:</strong> {role.estimatedTime} | <strong>Dimensions:</strong> {role.dimensionCount || (Array.isArray(role.subdomains) ? role.subdomains.length : 0)} | <strong>Order:</strong> {role.displayOrder || role.display_order || 0}
+                      </div>
+                      <div style={{
+                        fontSize: '13px',
+                        color: '#9ca3af'
+                      }}>
+                        <strong>Subdomains:</strong> {Array.isArray(role.subdomains) ? role.subdomains.join(', ') : role.subdomains}
+                      </div>
+                    </div>
+                    <div style={{
+                      display: 'flex',
+                      gap: '8px'
+                    }}>
+                      <button
+                        onClick={() => setEditingRole(role)}
+                        style={{
+                          padding: '8px 12px',
+                          backgroundColor: '#f3f4f6',
+                          color: '#374151',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '13px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <Edit size={14} />
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteRole(role.id)}
+                        style={{
+                          padding: '8px 12px',
+                          backgroundColor: '#fee2e2',
+                          color: '#991b1b',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '13px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <Trash2 size={14} />
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Subdomains Tab Content */}
+      {activeSubTab === 'subdomains' && (
+        <div>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '20px'
+          }}>
+            <h3 style={{
+              fontSize: '16px',
+              fontWeight: '600',
+              color: '#111827',
+              margin: 0
+            }}>
+              Assessment Subdomains ({subdomains.length})
+            </h3>
+            <button
+              onClick={() => setEditingSubdomain({
+                id: '',
+                name: '',
+                description: '',
+                domainGroup: ''
+              })}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 16px',
+                backgroundColor: '#7f7afe',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#6b6aef'}
+              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#7f7afe'}
+            >
+              <Plus size={16} />
+              Add Subdomain
+            </button>
+          </div>
+
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+              Loading subdomains...
+            </div>
+          ) : (
+            <div style={{
+              display: 'grid',
+              gap: '12px'
+            }}>
+              {subdomains.map((subdomain) => (
+                <div key={subdomain.id} style={{
+                  padding: '16px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  backgroundColor: 'white',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'start'
+                }}>
+                  <div style={{ flex: 1 }}>
+                    <h4 style={{
+                      fontSize: '15px',
+                      fontWeight: '600',
+                      color: '#111827',
+                      margin: '0 0 4px 0'
+                    }}>
+                      {subdomain.name}
+                    </h4>
+                    <p style={{
+                      fontSize: '13px',
+                      color: '#6b7280',
+                      margin: '0 0 4px 0'
+                    }}>
+                      {subdomain.description}
+                    </p>
+                    <div style={{
+                      fontSize: '12px',
+                      color: '#9ca3af'
+                    }}>
+                      <strong>Domain Group:</strong> {subdomain.domainGroup}
+                    </div>
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    gap: '8px'
+                  }}>
+                    <button
+                      onClick={() => setEditingSubdomain(subdomain)}
+                      style={{
+                        padding: '6px 10px',
+                        backgroundColor: '#f3f4f6',
+                        color: '#374151',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <Edit size={12} />
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteSubdomain(subdomain.id)}
+                      style={{
+                        padding: '6px 10px',
+                        backgroundColor: '#fee2e2',
+                        color: '#991b1b',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <Trash2 size={12} />
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Role Edit Modal */}
+      {editingRole && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            padding: '24px',
+            maxWidth: '600px',
+            width: '90%',
+            maxHeight: '90vh',
+            overflow: 'auto'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '20px'
+            }}>
+              <h3 style={{
+                fontSize: '18px',
+                fontWeight: '600',
+                color: '#111827',
+                margin: 0
+              }}>
+                {editingRole.id ? 'Edit Role' : 'Add New Role'}
+              </h3>
+              <button
+                onClick={() => setEditingRole(null)}
+                style={{
+                  padding: '4px',
+                  border: 'none',
+                  backgroundColor: 'transparent',
+                  cursor: 'pointer',
+                  color: '#6b7280'
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '6px'
+                }}>
+                  Role ID
+                </label>
+                <input
+                  type="text"
+                  value={editingRole.id}
+                  onChange={(e) => setEditingRole({ ...editingRole, id: e.target.value })}
+                  placeholder="e.g., executive"
+                  disabled={!!editingRole.id}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    backgroundColor: editingRole.id ? '#f9fafb' : 'white'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '6px'
+                }}>
+                  Title
+                </label>
+                <input
+                  type="text"
+                  value={editingRole.title}
+                  onChange={(e) => setEditingRole({ ...editingRole, title: e.target.value })}
+                  placeholder="e.g., Executive/C-Suite Level"
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '6px'
+                }}>
+                  Description
+                </label>
+                <textarea
+                  value={editingRole.description}
+                  onChange={(e) => setEditingRole({ ...editingRole, description: e.target.value })}
+                  placeholder="Describe this role..."
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '6px'
+                }}>
+                  Examples (comma-separated)
+                </label>
+                <input
+                  type="text"
+                  value={Array.isArray(editingRole.examples) ? editingRole.examples.join(', ') : editingRole.examples}
+                  onChange={(e) => setEditingRole({ ...editingRole, examples: e.target.value.split(',').map(s => s.trim()) })}
+                  placeholder="CEO, COO, CTO"
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '6px'
+                }}>
+                  Estimated Time
+                </label>
+                <input
+                  type="text"
+                  value={editingRole.estimatedTime}
+                  onChange={(e) => setEditingRole({ ...editingRole, estimatedTime: e.target.value })}
+                  placeholder="e.g., 15-20 minutes"
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '16px'
+              }}>
+                <div>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#374151',
+                    marginBottom: '6px'
+                  }}>
+                    Icon (emoji)
+                  </label>
+                  <input
+                    type="text"
+                    value={editingRole.icon}
+                    onChange={(e) => setEditingRole({ ...editingRole, icon: e.target.value })}
+                    placeholder="🏢"
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#374151',
+                    marginBottom: '6px'
+                  }}>
+                    Display Order
+                  </label>
+                  <input
+                    type="number"
+                    value={editingRole.displayOrder || 0}
+                    onChange={(e) => setEditingRole({ ...editingRole, displayOrder: parseInt(e.target.value) || 0 })}
+                    placeholder="1"
+                    min="0"
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '8px'
+                }}>
+                  Subdomains
+                </label>
+                <div style={{
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  padding: '12px',
+                  maxHeight: '200px',
+                  overflowY: 'auto'
+                }}>
+                  {subdomains.length === 0 ? (
+                    <div style={{ color: '#6b7280', fontSize: '14px' }}>Loading subdomains...</div>
+                  ) : (
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(2, 1fr)',
+                      gap: '8px'
+                    }}>
+                      {subdomains.map((subdomain) => {
+                        const isChecked = Array.isArray(editingRole.subdomains)
+                          ? editingRole.subdomains.includes(subdomain.id)
+                          : false;
+
+                        return (
+                          <label
+                            key={subdomain.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              cursor: 'pointer',
+                              padding: '6px',
+                              borderRadius: '4px',
+                              transition: 'background-color 0.2s'
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                const currentSubdomains = Array.isArray(editingRole.subdomains)
+                                  ? [...editingRole.subdomains]
+                                  : [];
+
+                                if (e.target.checked) {
+                                  setEditingRole({
+                                    ...editingRole,
+                                    subdomains: [...currentSubdomains, subdomain.id]
+                                  });
+                                } else {
+                                  setEditingRole({
+                                    ...editingRole,
+                                    subdomains: currentSubdomains.filter(id => id !== subdomain.id)
+                                  });
+                                }
+                              }}
+                              style={{
+                                cursor: 'pointer',
+                                width: '16px',
+                                height: '16px'
+                              }}
+                            />
+                            <span style={{
+                              fontSize: '14px',
+                              color: '#374151'
+                            }}>
+                              {subdomain.name}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <div style={{
+                  fontSize: '12px',
+                  color: '#6b7280',
+                  marginTop: '6px'
+                }}>
+                  Selected: {Array.isArray(editingRole.subdomains) ? editingRole.subdomains.length : 0} subdomain(s)
+                </div>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'flex-end',
+                marginTop: '8px'
+              }}>
+                <button
+                  onClick={() => setEditingRole(null)}
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: '#f3f4f6',
+                    color: '#374151',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveRole}
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: '#7f7afe',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <Save size={16} />
+                  Save Role
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Subdomain Edit Modal */}
+      {editingSubdomain && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            padding: '24px',
+            maxWidth: '500px',
+            width: '90%'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '20px'
+            }}>
+              <h3 style={{
+                fontSize: '18px',
+                fontWeight: '600',
+                color: '#111827',
+                margin: 0
+              }}>
+                {editingSubdomain.id ? 'Edit Subdomain' : 'Add New Subdomain'}
+              </h3>
+              <button
+                onClick={() => setEditingSubdomain(null)}
+                style={{
+                  padding: '4px',
+                  border: 'none',
+                  backgroundColor: 'transparent',
+                  cursor: 'pointer',
+                  color: '#6b7280'
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '6px'
+                }}>
+                  Subdomain ID
+                </label>
+                <input
+                  type="text"
+                  value={editingSubdomain.id}
+                  onChange={(e) => setEditingSubdomain({ ...editingSubdomain, id: e.target.value })}
+                  placeholder="e.g., data_collection"
+                  disabled={!!editingSubdomain.id}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    backgroundColor: editingSubdomain.id ? '#f9fafb' : 'white'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '6px'
+                }}>
+                  Name
+                </label>
+                <input
+                  type="text"
+                  value={editingSubdomain.name}
+                  onChange={(e) => setEditingSubdomain({ ...editingSubdomain, name: e.target.value })}
+                  placeholder="e.g., Data Collection"
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '6px'
+                }}>
+                  Description
+                </label>
+                <textarea
+                  value={editingSubdomain.description}
+                  onChange={(e) => setEditingSubdomain({ ...editingSubdomain, description: e.target.value })}
+                  placeholder="Describe this subdomain..."
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '6px'
+                }}>
+                  Domain Group
+                </label>
+                <select
+                  value={editingSubdomain.domainGroup}
+                  onChange={(e) => setEditingSubdomain({ ...editingSubdomain, domainGroup: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                >
+                  <option value="">Select domain group</option>
+                  <option value="data_lifecycle">Data Lifecycle</option>
+                  <option value="governance_protection">Governance & Protection</option>
+                  <option value="organizational_enablers">Organizational Enablers</option>
+                </select>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'flex-end',
+                marginTop: '8px'
+              }}>
+                <button
+                  onClick={() => setEditingSubdomain(null)}
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: '#f3f4f6',
+                    color: '#374151',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveSubdomain}
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: '#7f7afe',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <Save size={16} />
+                  Save Subdomain
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -243,9 +243,19 @@ export async function createOrResumeSession(code, userData, language = 'en') {
 
       console.log('🔧 INSERTING NEW USER:', userId);
       await connection.execute(`
-        INSERT INTO users (id, name, organization, role_title, email, selected_role_id)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `, [userId, userData.name, userData.organization, userData.roleTitle, userData.email, userData.selectedRole || null]);
+        INSERT INTO users (id, name, organization, organization_size, industry, country, role_title, email, selected_role_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        userId,
+        userData.name,
+        userData.organization,
+        userData.organizationSize || null,
+        userData.industry || null,
+        userData.country || null,
+        userData.roleTitle,
+        userData.email,
+        userData.selectedRole || null
+      ]);
 
       console.log('🔧 INSERTING NEW SESSION:', sessionId);
       await connection.execute(`

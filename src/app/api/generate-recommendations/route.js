@@ -123,8 +123,8 @@ export async function POST(request) {
         u.email,
         u.organization,
         u.role_title,
-        r.name_en as role_name_en,
-        r.name_ar as role_name_ar
+        r.title as role_name_en,
+        r.title as role_name_ar
       FROM assessment_sessions s
       JOIN users u ON s.user_id = u.id
       LEFT JOIN roles r ON u.selected_role_id = r.id
@@ -511,13 +511,13 @@ Return ONLY the translated JSON in this exact format:
       await database.execute(`
         INSERT INTO recommendation_metadata
         (session_id, generated_at, model_version, language, overall_score, maturity_level, maturity_summary_description, maturity_summary_indicators)
-        VALUES (?, NOW(), 'gemini-2.5-pro', 'en', ?, ?, ?, ?)
+        VALUES (?, NOW(), 'gemini-1.5-pro', 'en', ?, ?, ?, ?)
       `, [sessionId, overallScore, maturityLevel, metadataEN.description, JSON.stringify(metadataEN.indicators)]);
 
       await database.execute(`
         INSERT INTO recommendation_metadata
         (session_id, generated_at, model_version, language, overall_score, maturity_level, maturity_summary_description, maturity_summary_indicators)
-        VALUES (?, NOW(), 'gemini-2.5-pro', 'ar', ?, ?, ?, ?)
+        VALUES (?, NOW(), 'gemini-1.5-pro', 'ar', ?, ?, ?, ?)
       `, [sessionId, overallScore, maturityLevel, metadataAR.description, JSON.stringify(metadataAR.indicators)]);
 
       // Helper function to insert recommendations for a language

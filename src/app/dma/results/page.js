@@ -67,6 +67,21 @@ function ResultsPageContent() {
   // Maturity levels state
   const [maturityLevels, setMaturityLevels] = useState([]);
 
+  // Organization assessment request modal state
+  const [showOrgModal, setShowOrgModal] = useState(false);
+  const [orgRequestLoading, setOrgRequestLoading] = useState(false);
+  const [orgFormData, setOrgFormData] = useState({
+    userName: '',
+    userEmail: '',
+    organizationName: '',
+    organizationSize: '',
+    industry: '',
+    country: '',
+    phoneNumber: '',
+    jobTitle: '',
+    message: ''
+  });
+
   // Get parameters from URL
   const sessionId = searchParams.get('session');
   const role = searchParams.get('role');
@@ -384,24 +399,77 @@ function ResultsPageContent() {
   };
 
   const emailResults = async () => {
-    const email = prompt(language === 'ar' ? 'أدخل عنوان البريد الإلكتروني:' : 'Enter email address:');
-    if (email) {
-      try {
-        // TODO: Implement email API
-        alert(language === 'ar' ? 
-          `جاري إرسال النتائج إلى ${email}...` : 
-          `Sending results to ${email}...`);
-      } catch (error) {
-        alert(language === 'ar' ? 'خطأ في الإرسال' : 'Error sending email');
-      }
-    }
+    alert(language === 'ar' ?
+      'قريباً... سيتم إضافة ميزة إرسال النتائج بالبريد الإلكتروني' :
+      'Coming Soon... Email results feature will be available soon');
   };
 
   const requestOrgAssessment = () => {
-    // TODO: Implement organization assessment request form
-    alert(language === 'ar' ? 
-      'سيتم إضافة نموذج طلب تقييم المنظمة قريباً' : 
-      'Organization assessment request form will be added soon');
+    // Pre-fill with existing user data if available
+    if (resultsData?.userData) {
+      setOrgFormData({
+        ...orgFormData,
+        userName: resultsData.userData.name || '',
+        userEmail: resultsData.userData.email || '',
+        organizationName: resultsData.userData.organization || '',
+        jobTitle: resultsData.userData.role || ''
+      });
+    }
+    setShowOrgModal(true);
+  };
+
+  const handleOrgFormSubmit = async (e) => {
+    e.preventDefault();
+    setOrgRequestLoading(true);
+
+    try {
+      const response = await fetch('/api/org-assessment-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: sessionId,
+          ...orgFormData
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Keep loading state visible for a moment so user sees the feedback
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setOrgRequestLoading(false);
+
+        alert(language === 'ar' ?
+          'تم إرسال طلبك بنجاح! سنتواصل معك قريباً.' :
+          'Your request has been submitted successfully! We will contact you soon.');
+
+        setShowOrgModal(false);
+
+        // Reset form
+        setOrgFormData({
+          userName: '',
+          userEmail: '',
+          organizationName: '',
+          organizationSize: '',
+          industry: '',
+          country: '',
+          phoneNumber: '',
+          jobTitle: '',
+          message: ''
+        });
+      } else {
+        setOrgRequestLoading(false);
+        alert(language === 'ar' ?
+          'حدث خطأ أثناء إرسال الطلب. يرجى المحاولة مرة أخرى.' :
+          'An error occurred while submitting your request. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error submitting organization assessment request:', error);
+      setOrgRequestLoading(false);
+      alert(language === 'ar' ?
+        'حدث خطأ أثناء إرسال الطلب. يرجى المحاولة مرة أخرى.' :
+        'An error occurred while submitting your request. Please try again.');
+    }
   };
 
   // Loading state
@@ -1247,6 +1315,246 @@ function ResultsPageContent() {
 
         </div>
       </div>
+
+      {/* Organization Assessment Request Modal */}
+      {showOrgModal && (
+        <>
+          <style>{`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '20px'
+          }} onClick={() => setShowOrgModal(false)}>
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            maxWidth: '600px',
+            width: '100%',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.3)'
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ padding: '30px 30px 0 30px', overflow: 'auto', flex: 1 }}>
+              <h2 style={{
+                marginBottom: '10px',
+                color: 'var(--primary)',
+                fontSize: '1.5rem'
+              }}>
+                {language === 'ar' ? 'طلب تقييم المنظمة' : 'Request Organization Assessment'}
+              </h2>
+              <p style={{
+                marginBottom: '25px',
+                color: 'var(--text-secondary)',
+                fontSize: '0.95rem'
+              }}>
+                {language === 'ar'
+                  ? 'املأ النموذج أدناه وسنتواصل معك قريباً لمناقشة احتياجات تقييم مؤسستك.'
+                  : 'Fill out the form below and we will contact you soon to discuss your organization assessment needs.'}
+              </p>
+
+              <form onSubmit={handleOrgFormSubmit} id="org-request-form">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '0.9rem' }}>
+                    {language === 'ar' ? 'الاسم' : 'Name'} <span style={{ color: 'red' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={orgFormData.userName}
+                    onChange={(e) => setOrgFormData({...orgFormData, userName: e.target.value})}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '0.95rem'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '0.9rem' }}>
+                    {language === 'ar' ? 'البريد الإلكتروني' : 'Email'} <span style={{ color: 'red' }}>*</span>
+                  </label>
+                  <input
+                    type="email"
+                    value={orgFormData.userEmail}
+                    onChange={(e) => setOrgFormData({...orgFormData, userEmail: e.target.value})}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '0.95rem'
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '0.9rem' }}>
+                  {language === 'ar' ? 'اسم المنظمة' : 'Organization Name'} <span style={{ color: 'red' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={orgFormData.organizationName}
+                  onChange={(e) => setOrgFormData({...orgFormData, organizationName: e.target.value})}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #ddd',
+                    borderRadius: '6px',
+                    fontSize: '0.95rem'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '0.9rem' }}>
+                    {language === 'ar' ? 'رقم الهاتف' : 'Phone Number'} <span style={{ color: 'red' }}>*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    value={orgFormData.phoneNumber}
+                    onChange={(e) => setOrgFormData({...orgFormData, phoneNumber: e.target.value})}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '0.95rem'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '0.9rem' }}>
+                    {language === 'ar' ? 'المسمى الوظيفي' : 'Job Title'}
+                  </label>
+                  <input
+                    type="text"
+                    value={orgFormData.jobTitle}
+                    onChange={(e) => setOrgFormData({...orgFormData, jobTitle: e.target.value})}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '0.95rem'
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500', fontSize: '0.9rem' }}>
+                  {language === 'ar' ? 'رسالة إضافية' : 'Additional Message'}
+                </label>
+                <textarea
+                  value={orgFormData.message}
+                  onChange={(e) => setOrgFormData({...orgFormData, message: e.target.value})}
+                  rows="4"
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #ddd',
+                    borderRadius: '6px',
+                    fontSize: '0.95rem',
+                    resize: 'vertical'
+                  }}
+                  placeholder={language === 'ar'
+                    ? 'أخبرنا المزيد عن احتياجات التقييم الخاصة بمؤسستك...'
+                    : 'Tell us more about your organization assessment needs...'}
+                />
+              </div>
+              </form>
+            </div>
+
+            {/* Fixed footer with buttons */}
+            <div style={{
+              padding: '20px 30px',
+              borderTop: '1px solid #eee',
+              display: 'flex',
+              gap: '10px',
+              justifyContent: 'flex-end',
+              background: 'white',
+              borderRadius: '0 0 12px 12px'
+            }}>
+              <button
+                type="button"
+                onClick={() => setShowOrgModal(false)}
+                disabled={orgRequestLoading}
+                style={{
+                  padding: '12px 24px',
+                  background: '#f5f5f5',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: orgRequestLoading ? 'not-allowed' : 'pointer',
+                  fontSize: '0.95rem',
+                  fontWeight: '500',
+                  opacity: orgRequestLoading ? 0.6 : 1
+                }}
+              >
+                {language === 'ar' ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button
+                type="submit"
+                form="org-request-form"
+                disabled={orgRequestLoading}
+                style={{
+                  padding: '12px 24px',
+                  background: orgRequestLoading ? '#6c757d' : '#0F2C69',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: orgRequestLoading ? 'not-allowed' : 'pointer',
+                  fontSize: '0.95rem',
+                  fontWeight: '500',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  justifyContent: 'center'
+                }}
+              >
+                {orgRequestLoading && (
+                  <span style={{
+                    display: 'inline-block',
+                    width: '16px',
+                    height: '16px',
+                    border: '2px solid white',
+                    borderTop: '2px solid transparent',
+                    borderRadius: '50%',
+                    animation: 'spin 0.8s linear infinite'
+                  }} />
+                )}
+                {orgRequestLoading
+                  ? (language === 'ar' ? 'جاري الإرسال...' : 'Submitting...')
+                  : (language === 'ar' ? 'إرسال الطلب' : 'Submit Request')}
+              </button>
+            </div>
+          </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
