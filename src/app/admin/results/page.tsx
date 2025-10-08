@@ -997,6 +997,59 @@ export default function ResultsAnalyticsPage() {
         const data = await response.json()
 
         if (response.ok && data.success) {
+          // Parse maturityAnalysis indicators if they're strings
+          if (data.report?.maturityAnalysis) {
+            const parseIndicators = (indicators: any) => {
+              if (!indicators) return [];
+              if (Array.isArray(indicators)) return indicators;
+              if (typeof indicators === 'string') {
+                const str = indicators.trim();
+                if (str.startsWith('[')) {
+                  try {
+                    return JSON.parse(str);
+                  } catch (e) {
+                    return [];
+                  }
+                } else if (str.length > 0) {
+                  return str.split('.,').map(s => s.trim()).filter(s => s.length > 0).map(s => s.endsWith('.') ? s : s + '.');
+                }
+              }
+              return [];
+            };
+
+            data.report.maturityAnalysis.indicators_en = parseIndicators(data.report.maturityAnalysis.indicators_en);
+            data.report.maturityAnalysis.indicators_ar = parseIndicators(data.report.maturityAnalysis.indicators_ar);
+          }
+
+          // For collective reports, generate collective recommendations
+          console.log('🔍 DEBUG: reportType =', reportType, 'checking if === "multiple"');
+          if (reportType === 'multiple') {
+            console.log('✅ Entering collective recommendations flow');
+
+            // Store base report data and codes in session storage
+            const reportInfo = {
+              codes: selectedCodes,
+              baseReport: data.report,
+              timestamp: Date.now()
+            };
+            sessionStorage.setItem('pendingCollectiveReport', JSON.stringify(reportInfo));
+
+            // Trigger AI generation (fire-and-forget - don't wait for response)
+            fetch('/api/admin/generate-collective-recommendations', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ codes: selectedCodes })
+            }).catch(err => {
+              console.error('Background generation error (will continue polling):', err);
+            });
+
+            // Open generating page immediately
+            window.open('/admin/consolidated-report?generating=true', '_blank');
+
+            setGeneratingReport(false);
+            return;
+          }
+
           setReportData(data.report)
         } else {
           alert(`Error generating report: ${data.error}`)
@@ -1018,16 +1071,25 @@ export default function ResultsAnalyticsPage() {
         const originalText = button?.textContent;
         if (button) button.textContent = 'Generating PDF...';
 
-        const response = await fetch('/api/export-pdf', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            reportData,
-            reportType
-          })
-        });
+        let response;
+
+        // For single assessment reports, use the same PDF generation as user results
+        if (reportType === 'single' && reportData.sessions && reportData.sessions.length > 0) {
+          const sessionId = reportData.sessions[0].id;
+          response = await fetch(`/api/export-pdf?session=${sessionId}&lang=en`);
+        } else {
+          // For collective reports, use the POST endpoint with report data
+          response = await fetch('/api/export-pdf', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              reportData,
+              reportType
+            })
+          });
+        }
 
         if (response.ok) {
           const blob = await response.blob();
@@ -1035,7 +1097,7 @@ export default function ResultsAnalyticsPage() {
           const a = document.createElement('a');
           a.style.display = 'none';
           a.href = url;
-          a.download = `admin-assessment-report-${reportType}-${new Date().toISOString().split('T')[0]}.pdf`;
+          a.download = `assessment-report-${reportType}-${new Date().toISOString().split('T')[0]}.pdf`;
           document.body.appendChild(a);
           a.click();
           window.URL.revokeObjectURL(url);
@@ -2288,7 +2350,9 @@ export default function ResultsAnalyticsPage() {
                 fontFamily: 'var(--font-primary)',
                 textAlign: 'left'
               }}>
-                General Recommendations
+                {reportData.userInfo?.organization
+                  ? `General Recommendations for ${reportData.userInfo.organization}`
+                  : 'General Recommendations'}
               </h2>
 
               {reportData.generalRecommendations && reportData.generalRecommendations.map((rec, index) => (
@@ -2359,7 +2423,9 @@ export default function ResultsAnalyticsPage() {
                 fontFamily: 'var(--font-primary)',
                 textAlign: 'left'
               }}>
-                Role-Specific Recommendations
+                {reportData.userInfo?.role
+                  ? `Role-Specific Recommendations for ${reportData.userInfo.role}`
+                  : 'Role-Specific Recommendations'}
               </h2>
 
               {reportData.roleRecommendations && reportData.roleRecommendations.map((rec, index) => (

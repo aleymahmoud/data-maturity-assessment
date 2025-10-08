@@ -152,6 +152,71 @@ export async function POST(request) {
             `}
         </div>
 
+        <!-- Radar Chart Section -->
+        <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <h2 style="margin-top: 0;">Maturity Assessment Overview</h2>
+            <canvas id="radarChart" width="600" height="400"></canvas>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+        <script>
+            const ctx = document.getElementById('radarChart').getContext('2d');
+            const chartData = ${JSON.stringify(reportData.subdomainScores.map(s => ({
+              label: s.name,
+              score: s.score || 0
+            })))};
+
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: chartData.map(d => d.label),
+                    datasets: [{
+                        label: 'Maturity Score',
+                        data: chartData.map(d => d.score),
+                        backgroundColor: 'rgba(127, 122, 254, 0.2)',
+                        borderColor: '#7f7afe',
+                        borderWidth: 2,
+                        pointBackgroundColor: '#7f7afe',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: '#7f7afe',
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 5,
+                            ticks: {
+                                stepSize: 1,
+                                font: { size: 11 }
+                            },
+                            pointLabels: {
+                                font: { size: 12, weight: 'bold' },
+                                color: '#0f2c69'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                font: { size: 13 }
+                            }
+                        }
+                    }
+                }
+            });
+        </script>
+
         <h2>Scores by Dimension</h2>
         ${reportData.subdomainScores.map(subdomain => `
             <div class="subdomain">
@@ -213,6 +278,9 @@ export async function POST(request) {
 
     const page = await browser.newPage();
     await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+
+    // Wait for Chart.js to render the radar chart
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
     const pdfBuffer = await page.pdf({
       format: 'A4',
@@ -337,7 +405,32 @@ export async function GET(request) {
 
     const maturitySummary = maturitySummaryData.length > 0 ? {
       description: maturitySummaryData[0].maturity_summary_description,
-      keyIndicators: maturitySummaryData[0].maturity_summary_indicators || []
+      keyIndicators: (() => {
+        const indicatorsData = maturitySummaryData[0].maturity_summary_indicators;
+        if (!indicatorsData) return [];
+
+        if (typeof indicatorsData === 'string') {
+          // Check if it's a JSON string
+          if (indicatorsData.trim().startsWith('[')) {
+            try {
+              return JSON.parse(indicatorsData);
+            } catch (e) {
+              console.error('Failed to parse JSON indicators:', e);
+              return [];
+            }
+          } else {
+            // It's a comma-separated string, split it
+            return indicatorsData
+              .split('.,')
+              .map(s => s.trim())
+              .filter(s => s.length > 0)
+              .map(s => s.endsWith('.') ? s : s + '.');
+          }
+        } else if (Array.isArray(indicatorsData)) {
+          return indicatorsData;
+        }
+        return [];
+      })()
     } : null;
 
     // Fetch real recommendations from database
@@ -968,7 +1061,9 @@ export async function GET(request) {
             ${resultsData.generalRecommendations && resultsData.generalRecommendations.length > 0 ? `
                 <div class="recommendations-section">
                     <div class="assessment-card recommendations-card">
-                        <h2>${language === 'ar' ? 'التوصيات العامة' : 'General Recommendations'}</h2>
+                        <h2>${language === 'ar'
+                            ? `التوصيات العامة لـ ${sessionData.organization}`
+                            : `General Recommendations for ${sessionData.organization}`}</h2>
                         
                         ${resultsData.generalRecommendations.map(rec => `
                             <div class="recommendation-item">
@@ -986,7 +1081,9 @@ export async function GET(request) {
             ${resultsData.roleRecommendations && resultsData.roleRecommendations.length > 0 ? `
                 <div class="recommendations-section">
                     <div class="assessment-card role-recommendations-card">
-                        <h2>${language === 'ar' ? 'التوصيات الخاصة بالدور' : 'Role-Specific Recommendations'}</h2>
+                        <h2>${language === 'ar'
+                            ? `التوصيات الخاصة بالدور لـ ${sessionData.role_name || sessionData.role_title}`
+                            : `Role-Specific Recommendations for ${sessionData.role_name || sessionData.role_title}`}</h2>
                         
                         ${resultsData.roleRecommendations.map(rec => `
                             <div class="recommendation-item">

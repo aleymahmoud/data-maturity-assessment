@@ -11,6 +11,7 @@ export async function GET(request) {
     const limit = parseInt(searchParams.get('limit') || '10')
     const organization = searchParams.get('organization') || ''
     const status = searchParams.get('status') || ''
+    const type = searchParams.get('type') || ''
     const search = searchParams.get('search') || ''
 
     const offset = (page - 1) * limit
@@ -29,12 +30,9 @@ export async function GET(request) {
       params.push(organization)
     }
 
-    if (status && status !== 'all') {
-      if (status === 'used') {
-        whereConditions.push('is_used = 1')
-      } else if (status === 'unused') {
-        whereConditions.push('is_used = 0')
-      }
+    if (type && type !== 'all') {
+      whereConditions.push('assessment_type = ?')
+      params.push(type)
     }
 
     if (search) {
@@ -44,24 +42,16 @@ export async function GET(request) {
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
 
-    // Get total count
-    const [countResult] = await database.execute(`
-      SELECT COUNT(*) as total FROM assessment_codes ${whereClause}
-    `, params)
-
-    const totalCount = countResult[0].total
-
     // Get codes with pagination - use template literal for LIMIT/OFFSET since MySQL has issues with parameterized LIMIT
     const query = `
       SELECT * FROM assessment_codes
       ${whereClause}
       ORDER BY created_at DESC
-      LIMIT ${limit} OFFSET ${offset}
     `
-    const [codes] = await database.execute(query, params)
+    const [allCodes] = await database.execute(query, params)
 
     // Calculate status for each code
-    const codesWithStatus = codes.map(code => {
+    const codesWithStatus = allCodes.map(code => {
       const now = new Date()
       const expiresAt = new Date(code.expires_at)
       const isExpired = expiresAt < now
@@ -69,26 +59,36 @@ export async function GET(request) {
       const isUsed = code.is_used
       const isManuallyInactive = code.is_active === 0
 
-      let status = 'active'
+      let codeStatus = 'active'
       if (isExpired) {
-        status = 'expired'
+        codeStatus = 'expired'
       } else if (isUsedUp) {
-        status = 'used_up'
+        codeStatus = 'used_up'
       } else if (isUsed) {
-        status = 'used_up'
+        codeStatus = 'used_up'
       } else if (isManuallyInactive) {
-        status = 'inactive'
+        codeStatus = 'inactive'
       }
 
       return {
         ...code,
-        status,
+        status: codeStatus,
         active: code.is_active === 1
       }
     })
 
+    // Apply status filter after calculating status
+    let filteredCodes = codesWithStatus
+    if (status && status !== 'all') {
+      filteredCodes = codesWithStatus.filter(code => code.status === status)
+    }
+
+    // Apply pagination to filtered results
+    const totalCount = filteredCodes.length
+    const paginatedCodes = filteredCodes.slice(offset, offset + limit)
+
     return NextResponse.json({
-      codes: codesWithStatus,
+      codes: paginatedCodes,
       pagination: {
         page,
         limit,

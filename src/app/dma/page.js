@@ -10,8 +10,8 @@ function HomePageContent() {
   const getContent = () => {
     const content = {
       en: {
-        title: 'DATA MATURITY',
-        subtitle: 'ASSESSMENT TOOL',
+        title: 'Data Maturity Assessment',
+        subtitle: '',
         feature1: 'Evaluate your organization\'s data capabilities across 11 key dimensions',
         feature2: 'Time: 25-30 minutes',
         feature3: 'Questions: Tailored question set for your organization',
@@ -22,8 +22,8 @@ function HomePageContent() {
         privacy: 'This assessment is designed to help organizations understand their current data maturity level and identify areas for improvement. All responses are confidential and used only for generating your personalized recommendations.'
       },
       ar: {
-        title: 'DATA MATURITY',
-        subtitle: 'ASSESSMENT TOOL',
+        title: 'Data Maturity Assessment',
+        subtitle: '',
         feature1: 'قيّم قدرات مؤسستك في البيانات عبر 11 بُعداً رئيسياً',
         feature2: 'الوقت: 25-30 دقيقة',
         feature3: 'الأسئلة: مجموعة أسئلة مخصصة لمؤسستك',
@@ -52,10 +52,10 @@ function HomePageContent() {
           
           {/* Header */}
           <div style={{ marginBottom: '40px' }}>
-            <h1 style={{ 
-              fontSize: '3rem', 
+            <h1 style={{
+              fontSize: '3rem',
               marginBottom: '10px',
-              fontFamily: 'var(--font-primary)'
+              fontFamily: '"Courier New", Courier, monospace'
             }}>
               {content.title}
             </h1>

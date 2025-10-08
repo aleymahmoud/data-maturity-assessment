@@ -22,10 +22,9 @@ export async function openDatabase() {
       password: process.env.DB_PASSWORD || '',
       database: process.env.DB_NAME || 'data_maturity',
       connectionLimit: 5,
-      acquireTimeout: 60000,
-      timeout: 60000,
-      charset: 'utf8mb4',
-      reconnect: true
+      waitForConnections: true,
+      queueLimit: 0,
+      charset: 'utf8mb4'
     });
 
     // Test the connection
@@ -127,8 +126,20 @@ export async function createOrResumeSession(code, userData, language = 'en') {
     }
 
     const codeInfo = codeDetails[0];
-    // MySQL JSON column is already parsed, no need for JSON.parse()
-    const questionList = Array.isArray(codeInfo.question_list) ? codeInfo.question_list : JSON.parse(codeInfo.question_list || '[]');
+    // Handle question_list - can be JSON array, comma-separated string, or already parsed array
+    let questionList = [];
+    if (Array.isArray(codeInfo.question_list)) {
+      questionList = codeInfo.question_list;
+    } else if (typeof codeInfo.question_list === 'string') {
+      const listStr = codeInfo.question_list.trim();
+      if (listStr.startsWith('[')) {
+        // It's a JSON string
+        questionList = JSON.parse(listStr);
+      } else if (listStr.length > 0) {
+        // It's a comma-separated string
+        questionList = listStr.split(',').map(q => q.trim()).filter(q => q.length > 0);
+      }
+    }
     const totalQuestions = questionList.length;
 
     // Check for ANY existing sessions with this code (regardless of status)
@@ -486,7 +497,19 @@ export async function getFirstUnansweredQuestionByCode(code) {
       SELECT question_list FROM assessment_codes WHERE code = ?
     `, [code]);
 
-    const questionList = Array.isArray(codeRows[0]?.question_list) ? codeRows[0].question_list : JSON.parse(codeRows[0]?.question_list || '[]');
+    // Handle question_list - can be JSON array, comma-separated string, or already parsed array
+    let questionList = [];
+    const questionData = codeRows[0]?.question_list;
+    if (Array.isArray(questionData)) {
+      questionList = questionData;
+    } else if (typeof questionData === 'string') {
+      const listStr = questionData.trim();
+      if (listStr.startsWith('[')) {
+        questionList = JSON.parse(listStr);
+      } else if (listStr.length > 0) {
+        questionList = listStr.split(',').map(q => q.trim()).filter(q => q.length > 0);
+      }
+    }
     const totalQuestions = questionList.length;
 
     if (totalQuestions === 0) {
@@ -612,7 +635,19 @@ export async function getUnansweredQuestionsByCode(code) {
       SELECT question_list FROM assessment_codes WHERE code = ?
     `, [code]);
 
-    const questionList = Array.isArray(codeRows[0]?.question_list) ? codeRows[0].question_list : JSON.parse(codeRows[0]?.question_list || '[]');
+    // Handle question_list - can be JSON array, comma-separated string, or already parsed array
+    let questionList = [];
+    const questionData = codeRows[0]?.question_list;
+    if (Array.isArray(questionData)) {
+      questionList = questionData;
+    } else if (typeof questionData === 'string') {
+      const listStr = questionData.trim();
+      if (listStr.startsWith('[')) {
+        questionList = JSON.parse(listStr);
+      } else if (listStr.length > 0) {
+        questionList = listStr.split(',').map(q => q.trim()).filter(q => q.length > 0);
+      }
+    }
 
     if (questionList.length === 0) {
       return { success: false, error: 'No questions found for this assessment code' };
@@ -708,7 +743,7 @@ export async function getAssessmentResults(userId, assessmentCode) {
 
   try {
     const [rows] = await database.execute(`
-      SELECT ar.*, u.name, u.email, r.name_en as role_name
+      SELECT ar.*, u.name, u.email, r.title as role_name
       FROM assessment_results ar
       JOIN users u ON ar.user_id = u.id
       LEFT JOIN roles r ON u.selected_role_id = r.id

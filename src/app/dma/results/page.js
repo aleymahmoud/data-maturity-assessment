@@ -1168,7 +1168,9 @@ function ResultsPageContent() {
                   fontFamily: 'var(--font-primary)',
                   textAlign: language === 'ar' ? 'right' : 'left'
                 }}>
-                  {content.generalRecTitle}
+                  {language === 'ar'
+                    ? `${content.generalRecTitle} لـ ${resultsData.userData.organization}`
+                    : `${content.generalRecTitle} for ${resultsData.userData.organization}`}
                 </h2>
 
                 {recommendations.general && recommendations.general.map((rec, index) => (
@@ -1219,7 +1221,9 @@ function ResultsPageContent() {
                   fontFamily: 'var(--font-primary)',
                   textAlign: language === 'ar' ? 'right' : 'left'
                 }}>
-                  {content.roleRecTitle}
+                  {language === 'ar'
+                    ? `${content.roleRecTitle} لـ ${resultsData.userData.role}`
+                    : `${content.roleRecTitle} for ${resultsData.userData.role}`}
                 </h2>
 
                 {recommendations.role && recommendations.role.map((rec, index) => (

@@ -62,7 +62,7 @@ export async function GET(request) {
         u.email as user_email,
         u.organization,
         u.role_title,
-        r.name_en as role_name,
+        r.title as role_name,
         ac.assessment_type,
         ac.organization_name as code_organization,
         ar.overall_score,

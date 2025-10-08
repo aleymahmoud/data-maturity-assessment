@@ -3,7 +3,9 @@ import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { openDatabase } from '../../../lib/database.js';
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY);
+// Initialize with primary key, will fallback to backup if needed
+let genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY);
+let usingBackupKey = false;
 
 // Set API version to v1 instead of v1beta
 const apiSettings = {
@@ -89,9 +91,46 @@ export async function POST(request) {
 
         // Get maturity summary for the requested language
         const selectedRecs = language === 'ar' ? existingRecsAR : existingRecsEN;
+
+        // Parse keyIndicators - handle both JSON array and comma-separated string formats
+        let keyIndicators = [];
+        const indicatorsData = selectedRecs[0].maturity_summary_indicators;
+
+        console.log('DEBUG: indicatorsData type:', typeof indicatorsData);
+        console.log('DEBUG: indicatorsData value:', indicatorsData);
+
+        if (indicatorsData) {
+          if (typeof indicatorsData === 'string') {
+            // Check if it's a JSON string
+            if (indicatorsData.trim().startsWith('[')) {
+              try {
+                keyIndicators = JSON.parse(indicatorsData);
+                console.log('DEBUG: Parsed as JSON array');
+              } catch (e) {
+                console.error('Failed to parse JSON indicators:', e);
+                keyIndicators = [];
+              }
+            } else {
+              // It's a comma-separated string, split it
+              console.log('DEBUG: Splitting as comma-separated string');
+              keyIndicators = indicatorsData
+                .split('.,')
+                .map(s => s.trim())
+                .filter(s => s.length > 0)
+                .map(s => s.endsWith('.') ? s : s + '.');
+              console.log('DEBUG: Split result:', keyIndicators);
+            }
+          } else if (Array.isArray(indicatorsData)) {
+            keyIndicators = indicatorsData;
+            console.log('DEBUG: Already an array');
+          }
+        }
+
+        console.log('DEBUG: Final keyIndicators:', keyIndicators);
+
         const maturitySummary = {
           description: selectedRecs[0].maturity_summary_description,
-          keyIndicators: selectedRecs[0].maturity_summary_indicators || []
+          keyIndicators: keyIndicators
         };
 
         return NextResponse.json({
@@ -417,11 +456,43 @@ Generate the recommendations now:`;
       console.log('✓ Generated English recommendations with maturity summary');
     } catch (error) {
       console.error('Error generating English recommendations:', error);
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to generate recommendations',
-        details: error.message
-      }, { status: 500 });
+
+      // Try backup API key if available and not already using it
+      if (process.env.GOOGLE_GEMINI_API_KEY_BACKUP && !usingBackupKey && error.message.includes('API_KEY_INVALID')) {
+        console.log('⚠️ Primary API key failed, switching to backup key...');
+        genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY_BACKUP);
+        usingBackupKey = true;
+
+        try {
+          const backupModel = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
+          const result = await backupModel.generateContent(prompt);
+          const responseText = result.response.text();
+
+          console.log('Raw LLM Response (EN - Backup Key):', responseText.substring(0, 200) + '...');
+
+          const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+          recommendationsEN = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(responseText);
+
+          if (!recommendationsEN.maturitySummary || !recommendationsEN.generalRecommendations || !recommendationsEN.roleRecommendations) {
+            throw new Error('Invalid recommendations structure - missing required fields');
+          }
+
+          console.log('✓ Generated English recommendations with backup key');
+        } catch (backupError) {
+          console.error('Backup key also failed:', backupError);
+          return NextResponse.json({
+            success: false,
+            error: 'Failed to generate recommendations with both API keys',
+            details: backupError.message
+          }, { status: 500 });
+        }
+      } else {
+        return NextResponse.json({
+          success: false,
+          error: 'Failed to generate recommendations',
+          details: error.message
+        }, { status: 500 });
+      }
     }
 
     // Translate to Arabic using a simple prompt

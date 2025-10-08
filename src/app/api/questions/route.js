@@ -18,8 +18,19 @@ export async function GET(request) {
 
       const codeData = rows[0];
       if (codeData && codeData.question_list) {
-        // MySQL JSON column is already parsed, no need for JSON.parse()
-        questionList = Array.isArray(codeData.question_list) ? codeData.question_list : JSON.parse(codeData.question_list);
+        // Handle question_list - can be JSON array, comma-separated string, or already parsed array
+        if (Array.isArray(codeData.question_list)) {
+          questionList = codeData.question_list;
+        } else if (typeof codeData.question_list === 'string') {
+          const listStr = codeData.question_list.trim();
+          if (listStr.startsWith('[')) {
+            // It's a JSON string
+            questionList = JSON.parse(listStr);
+          } else if (listStr.length > 0) {
+            // It's a comma-separated string
+            questionList = listStr.split(',').map(q => q.trim()).filter(q => q.length > 0);
+          }
+        }
       }
     }
 

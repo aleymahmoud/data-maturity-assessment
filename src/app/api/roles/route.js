@@ -10,32 +10,17 @@ export async function GET(request) {
     const language = searchParams.get('lang') || 'en';
 
     const [rows] = await database.execute(`
-      SELECT
-        id,
-        title as name,
-        description,
-        examples,
-        estimated_time as estimatedTime,
-        dimension_count as dimensionCount,
-        icon,
-        subdomains,
-        display_order
+      SELECT *
       FROM roles
       ORDER BY display_order, id
     `);
 
-    // Parse JSON fields and format for frontend
+    // Format for frontend
     const roles = rows.map(role => ({
       id: role.id,
-      name: role.name,
-      description: role.description,
-      focus: role.description, // Use description as focus for now
-      recommendations: `Personalized recommendations for ${role.name}`,
-      examples: typeof role.examples === 'string' ? JSON.parse(role.examples) : role.examples,
-      subdomains: typeof role.subdomains === 'string' ? JSON.parse(role.subdomains) : role.subdomains,
-      estimatedTime: role.estimatedTime,
-      dimensionCount: role.dimensionCount,
-      icon: role.icon,
+      name: role.title || role.name,
+      description: role.description || '',
+      focus: role.description || '',
       displayOrder: role.display_order
     }));
 
@@ -46,9 +31,12 @@ export async function GET(request) {
 
   } catch (error) {
     console.error('Error fetching roles:', error);
+    console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
     return NextResponse.json({
       success: false,
-      error: 'Failed to fetch roles'
+      error: 'Failed to fetch roles',
+      details: error.message
     }, { status: 500 });
   }
 }

@@ -28,7 +28,7 @@ export async function POST(request) {
         u.name as user_name,
         u.organization,
         u.role_title,
-        r.name_en as role_name
+        r.title as role_name
       FROM assessment_sessions s
       LEFT JOIN users u ON s.user_id = u.id
       LEFT JOIN roles r ON u.selected_role_id = r.id
