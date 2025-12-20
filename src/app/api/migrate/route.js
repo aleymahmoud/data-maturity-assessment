@@ -1,4 +1,4 @@
-import { runMigration } from '@/lib/migrate';
+import { runMigration } from '../../../lib/migrate.js';
 
 export async function GET() {
   try {
