@@ -1,0 +1,566 @@
+/* Omnisight Analytics Landing Page Styles */
+
+/* Color Theme */
+:root {
+  --omnisight-primary: #660053;
+  --omnisight-primary-light: #8a0070;
+  --omnisight-primary-dark: #4d003f;
+  --omnisight-accent: #f5ad2e;
+  --omnisight-text: #333333;
+  --omnisight-text-light: #666666;
+  --omnisight-bg: #ffffff;
+  --omnisight-bg-light: #f8f9fa;
+  --omnisight-gradient: linear-gradient(135deg, #660053 0%, #8a0070 100%);
+}
+
+/* Landing Page Container */
+.landing-page {
+  font-family: 'Montserrat', sans-serif;
+  color: var(--omnisight-text);
+  line-height: 1.6;
+}
+
+/* Navigation */
+.landing-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.landing-logo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--omnisight-primary);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.landing-logo-icon {
+  width: 40px;
+  height: 40px;
+  background: var(--omnisight-gradient);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+}
+
+.landing-nav-links {
+  display: flex;
+  gap: 2rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.landing-nav-links a {
+  color: var(--omnisight-text);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.landing-nav-links a:hover {
+  color: var(--omnisight-primary);
+}
+
+.landing-nav-cta {
+  background: var(--omnisight-gradient);
+  color: white !important;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.landing-nav-cta:hover {
+  opacity: 0.9;
+}
+
+/* Mobile Nav Toggle */
+.landing-nav-toggle {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+}
+
+.landing-nav-toggle span {
+  display: block;
+  width: 25px;
+  height: 3px;
+  background: var(--omnisight-primary);
+  margin: 5px 0;
+  border-radius: 2px;
+  transition: 0.3s;
+}
+
+/* Hero Section */
+.landing-hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--omnisight-gradient);
+  color: white;
+  padding: 6rem 2rem 4rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.landing-hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+.landing-hero-content {
+  max-width: 800px;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.landing-hero h1 {
+  font-size: 3.5rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  line-height: 1.2;
+}
+
+.landing-hero p {
+  font-size: 1.25rem;
+  opacity: 0.9;
+  margin-bottom: 2rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.landing-hero-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.landing-btn {
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.landing-btn-primary {
+  background: white;
+  color: var(--omnisight-primary);
+}
+
+.landing-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.landing-btn-secondary {
+  background: transparent;
+  color: white;
+  border: 2px solid white;
+}
+
+.landing-btn-secondary:hover {
+  background: white;
+  color: var(--omnisight-primary);
+}
+
+/* Sections */
+.landing-section {
+  padding: 5rem 2rem;
+}
+
+.landing-section-dark {
+  background: var(--omnisight-bg-light);
+}
+
+.landing-section-title {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.landing-section-title h2 {
+  font-size: 2.5rem;
+  color: var(--omnisight-primary);
+  margin-bottom: 1rem;
+}
+
+.landing-section-title p {
+  font-size: 1.1rem;
+  color: var(--omnisight-text-light);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* Services Grid */
+.landing-services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.landing-service-card {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  border: 1px solid #eee;
+}
+
+.landing-service-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 40px rgba(102, 0, 83, 0.15);
+}
+
+.landing-service-icon {
+  width: 60px;
+  height: 60px;
+  background: var(--omnisight-gradient);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+}
+
+.landing-service-card h3 {
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+  color: var(--omnisight-primary);
+}
+
+.landing-service-card p {
+  color: var(--omnisight-text-light);
+  line-height: 1.7;
+}
+
+/* Tools Section */
+.landing-tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.landing-tool-card {
+  background: white;
+  border-radius: 16px;
+  padding: 2.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.landing-tool-card:hover {
+  border-color: var(--omnisight-primary);
+  transform: translateY(-5px);
+  box-shadow: 0 15px 50px rgba(102, 0, 83, 0.2);
+}
+
+.landing-tool-badge {
+  display: inline-block;
+  background: var(--omnisight-accent);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.landing-tool-card h3 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  color: var(--omnisight-primary);
+}
+
+.landing-tool-card p {
+  color: var(--omnisight-text-light);
+  margin-bottom: 1.5rem;
+  line-height: 1.7;
+}
+
+.landing-tool-features {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.landing-tool-features li {
+  padding: 0.5rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--omnisight-text);
+}
+
+.landing-tool-features li::before {
+  content: '✓';
+  color: var(--omnisight-primary);
+  font-weight: 700;
+}
+
+.landing-tool-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  color: var(--omnisight-primary);
+  font-weight: 600;
+}
+
+.landing-tool-cta::after {
+  content: '→';
+  transition: transform 0.3s ease;
+}
+
+.landing-tool-card:hover .landing-tool-cta::after {
+  transform: translateX(5px);
+}
+
+/* About Section */
+.landing-about-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  align-items: center;
+}
+
+.landing-about-text h2 {
+  font-size: 2.5rem;
+  color: var(--omnisight-primary);
+  margin-bottom: 1.5rem;
+}
+
+.landing-about-text p {
+  color: var(--omnisight-text-light);
+  margin-bottom: 1rem;
+  line-height: 1.8;
+}
+
+.landing-about-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+}
+
+.landing-stat {
+  text-align: center;
+  padding: 2rem;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.landing-stat-number {
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--omnisight-primary);
+  display: block;
+}
+
+.landing-stat-label {
+  color: var(--omnisight-text-light);
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+/* Contact Section */
+.landing-contact {
+  background: var(--omnisight-gradient);
+  color: white;
+  text-align: center;
+}
+
+.landing-contact h2 {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  color: white;
+}
+
+.landing-contact p {
+  opacity: 0.9;
+  margin-bottom: 2rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.landing-contact-info {
+  display: flex;
+  justify-content: center;
+  gap: 3rem;
+  flex-wrap: wrap;
+  margin-top: 2rem;
+}
+
+.landing-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.1rem;
+}
+
+/* Footer */
+.landing-footer {
+  background: var(--omnisight-primary-dark);
+  color: white;
+  padding: 3rem 2rem 1.5rem;
+}
+
+.landing-footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.landing-footer-section h4 {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  color: white;
+}
+
+.landing-footer-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.landing-footer-section li {
+  margin-bottom: 0.5rem;
+}
+
+.landing-footer-section a {
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.landing-footer-section a:hover {
+  color: white;
+}
+
+.landing-footer-bottom {
+  text-align: center;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .landing-nav-links {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    flex-direction: column;
+    padding: 1rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  }
+
+  .landing-nav-links.active {
+    display: flex;
+  }
+
+  .landing-nav-toggle {
+    display: block;
+  }
+
+  .landing-hero h1 {
+    font-size: 2.5rem;
+  }
+
+  .landing-hero p {
+    font-size: 1rem;
+  }
+
+  .landing-hero-buttons {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .landing-about-content {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .landing-about-stats {
+    order: -1;
+  }
+
+  .landing-contact-info {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .landing-section-title h2 {
+    font-size: 2rem;
+  }
+
+  .landing-tools-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .landing-hero h1 {
+    font-size: 2rem;
+  }
+
+  .landing-about-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-stat {
+    padding: 1.5rem;
+  }
+
+  .landing-stat-number {
+    font-size: 2.5rem;
+  }
+}
