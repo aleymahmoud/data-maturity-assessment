@@ -6,8 +6,8 @@ import GoogleAnalytics from './components/GoogleAnalytics'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {
-  title: 'Data Maturity Assessment',
-  description: 'Assess your organization\'s data maturity level',
+  title: 'Omnisight Analytics | Data-Driven Insights & Solutions',
+  description: 'Transform your organization with data-driven insights. Comprehensive data strategy, analytics, governance, and maturity assessment tools.',
 }
 
 export default function RootLayout({ children }) {
