@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs'
-import { openDatabase } from '../../../../lib/database.js'
+import prisma from '../../../../lib/prisma.js'
 import NextAuth from 'next-auth'
 
 const authOptions = {
@@ -17,46 +17,37 @@ const authOptions = {
           return null
         }
 
-        let connection
         try {
-          const pool = await openDatabase()
-          connection = await pool.getConnection()
+          const user = await prisma.admin.findUnique({
+            where: { username: credentials.username }
+          })
 
-          const [rows] = await connection.execute(
-            'SELECT * FROM admin_users WHERE username = ? AND is_active = 1',
-            [credentials.username]
-          )
-
-          if (rows.length === 0) {
+          if (!user) {
             return null
           }
 
-          const user = rows[0]
-          const isValidPassword = await bcrypt.compare(credentials.password, user.password_hash)
+          const isValidPassword = await bcrypt.compare(credentials.password, user.passwordHash)
 
           if (!isValidPassword) {
             return null
           }
 
-          await connection.execute(
-            'UPDATE admin_users SET last_login = CURRENT_TIMESTAMP WHERE id = ?',
-            [user.id]
-          )
+          // Update last login (using updatedAt)
+          await prisma.admin.update({
+            where: { id: user.id },
+            data: { updatedAt: new Date() }
+          })
 
           return {
             id: user.id,
             username: user.username,
-            fullName: user.full_name,
+            fullName: user.username,
             email: user.email,
             role: user.role
           }
         } catch (error) {
           console.error('Auth error:', error)
           return null
-        } finally {
-          if (connection) {
-            connection.release()
-          }
         }
       }
     }
