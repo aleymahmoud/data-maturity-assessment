@@ -1,3 +1,4 @@
+// Database migration endpoint
 import { runMigration } from '../../../lib/migrate.js';
 
 export async function GET() {
