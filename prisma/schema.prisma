@@ -1,0 +1,134 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AssessmentCode {
+  code              String    @id
+  organizationName  String?   @map("organization_name")
+  intendedRecipient String?   @map("intended_recipient")
+  expiresAt         DateTime? @map("expires_at")
+  isUsed            Boolean   @default(false) @map("is_used")
+  usageCount        Int       @default(0) @map("usage_count")
+  assessmentType    String    @default("full") @map("assessment_type")
+  questionList      String?   @map("question_list") // JSON string of question IDs
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  sessions AssessmentSession[]
+  responses UserResponse[]
+  results  AssessmentResult[]
+
+  @@map("assessment_codes")
+}
+
+model User {
+  id               String    @id
+  name             String
+  email            String?
+  organization     String?
+  organizationSize String?   @map("organization_size")
+  industry         String?
+  country          String?
+  roleTitle        String?   @map("role_title")
+  selectedRoleId   String?   @map("selected_role_id")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  sessions AssessmentSession[]
+  results  AssessmentResult[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String  @id
+  title       String
+  description String?
+  dimensions  String? // JSON string of dimension IDs
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("roles")
+}
+
+model AssessmentSession {
+  id                   String    @id
+  userId               String    @map("user_id")
+  code                 String
+  status               String    @default("in_progress")
+  totalQuestions       Int       @default(35) @map("total_questions")
+  questionsAnswered    Int       @default(0) @map("questions_answered")
+  completionPercentage Int       @default(0) @map("completion_percentage")
+  languagePreference   String    @default("en") @map("language_preference")
+  sessionStart         DateTime  @default(now()) @map("session_start")
+  sessionEnd           DateTime? @map("session_end")
+
+  user      User           @relation(fields: [userId], references: [id])
+  codeRef   AssessmentCode @relation(fields: [code], references: [code])
+  responses UserResponse[]
+
+  @@map("assessment_sessions")
+}
+
+model UserResponse {
+  id             String   @id @default(cuid())
+  sessionId      String   @map("session_id")
+  questionId     String   @map("question_id")
+  selectedOption String   @map("selected_option")
+  scoreValue     Int      @default(0) @map("score_value")
+  assessmentCode String?  @map("assessment_code")
+  answeredAt     DateTime @default(now()) @map("answered_at")
+
+  session AssessmentSession @relation(fields: [sessionId], references: [id])
+  codeRef AssessmentCode?   @relation(fields: [assessmentCode], references: [code])
+
+  @@unique([sessionId, questionId])
+  @@map("user_responses")
+}
+
+model AssessmentResult {
+  id                     String   @id
+  userId                 String   @map("user_id")
+  assessmentCode         String   @map("assessment_code")
+  overallScore           Float    @map("overall_score")
+  overallMaturityLevel   String   @map("overall_maturity_level")
+  completionDate         DateTime @default(now()) @map("completion_date")
+  totalQuestionsAnswered Int      @map("total_questions_answered")
+  resultsData            String?  @map("results_data") // JSON string
+
+  user    User           @relation(fields: [userId], references: [id])
+  codeRef AssessmentCode @relation(fields: [assessmentCode], references: [code])
+
+  @@unique([userId, assessmentCode])
+  @@map("assessment_results")
+}
+
+model AuditLog {
+  id        String   @id
+  userType  String   @map("user_type")
+  userId    String?  @map("user_id")
+  action    String
+  details   String?
+  ipAddress String?  @map("ip_address")
+  timestamp DateTime @default(now())
+
+  @@map("audit_logs")
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String   @map("password_hash")
+  email        String?
+  role         String   @default("admin")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("admins")
+}

@@ -5,13 +5,18 @@
   "type": "module",
   "scripts": {
     "dev": "next dev -p 3001",
-    "build": "next build",
+    "build": "prisma generate && next build",
+    "postinstall": "prisma generate",
     "start": "next start -p 3001",
     "lint": "next lint",
-    "setup-admin": "node scripts/setup-admin.js"
+    "setup-admin": "node scripts/setup-admin.js",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@prisma/client": "^7.2.0",
     "bcryptjs": "^3.0.2",
     "better-sqlite3": "^12.2.0",
     "chart.js": "^4.5.0",
@@ -21,6 +26,7 @@
     "mysql2": "^3.14.5",
     "next": "15.4.8",
     "next-auth": "^4.24.11",
+    "prisma": "^7.2.0",
     "puppeteer": "^24.19.0",
     "react": "19.1.0",
     "react-chartjs-2": "^5.3.0",
