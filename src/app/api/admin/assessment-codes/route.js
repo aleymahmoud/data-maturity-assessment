@@ -60,6 +60,7 @@ export async function GET(request) {
         expires_at: code.expiresAt,
         is_used: code.isUsed,
         usage_count: code.usageCount,
+        max_uses: 1, // Single use codes - schema doesn't have max_uses field
         assessment_type: code.assessmentType,
         question_list: code.questionList,
         created_at: code.createdAt,

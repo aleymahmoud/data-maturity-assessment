@@ -44,7 +44,13 @@
       "mcp__playwright__browser_fill_form",
       "Bash(mysql:*)",
       "Bash(timeout:*)",
-      "mcp__playwright__browser_console_messages"
+      "mcp__playwright__browser_console_messages",
+      "Bash(npx prisma generate:*)",
+      "Bash(npx prisma db pull:*)",
+      "Bash(npx prisma studio)",
+      "Bash(npx prisma db push:*)",
+      "Bash(npx next build:*)",
+      "Bash(ping:*)"
     ],
     "deny": [],
     "ask": []

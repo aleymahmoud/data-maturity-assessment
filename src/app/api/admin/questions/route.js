@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server'
-import { openDatabase } from '../../../../lib/database.js'
+import prisma from '../../../../lib/prisma.js'
 
 export async function GET(request) {
   try {
-    const database = await openDatabase()
     const { searchParams } = new URL(request.url)
 
     // Get pagination parameters
@@ -12,56 +11,76 @@ export async function GET(request) {
     const offset = (page - 1) * limit
 
     // Get filter parameters
-    const subdomain = searchParams.get('subdomain') || 'all'
-    const priority = searchParams.get('priority') || 'all'
+    const subdomainId = searchParams.get('subdomain') || searchParams.get('subdomainId')
     const search = searchParams.get('search') || ''
 
-    // Build WHERE clause
-    let whereConditions = []
-    let params = []
+    // Build where clause
+    const where = {}
 
-    if (subdomain && subdomain !== 'all') {
-      whereConditions.push('q.subdomain_id = ?')
-      params.push(subdomain)
-    }
-
-    if (priority && priority !== 'all') {
-      whereConditions.push('q.priority = ?')
-      params.push(priority)
+    if (subdomainId && subdomainId !== 'all') {
+      where.subdomainId = subdomainId
     }
 
     if (search) {
-      whereConditions.push('(q.title_en LIKE ? OR q.title_ar LIKE ? OR q.text_en LIKE ? OR q.text_ar LIKE ?)')
-      const searchPattern = `%${search}%`
-      params.push(searchPattern, searchPattern, searchPattern, searchPattern)
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { titleAr: { contains: search, mode: 'insensitive' } },
+        { text: { contains: search, mode: 'insensitive' } },
+        { textAr: { contains: search, mode: 'insensitive' } }
+      ]
     }
 
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
-
     // Get total count
-    const [countResult] = await database.query(
-      `SELECT COUNT(*) as total FROM questions q ${whereClause}`,
-      params
-    )
-    const totalQuestions = countResult[0].total
+    const totalQuestions = await prisma.question.count({ where })
 
     // Get questions with subdomain info
-    const queryParams = [...params, limit, offset]
-    const [questions] = await database.query(`
-      SELECT
-        q.*,
-        s.name_en as subdomain_name_en,
-        s.name_ar as subdomain_name_ar
-      FROM questions q
-      LEFT JOIN subdomains s ON q.subdomain_id = s.id
-      ${whereClause}
-      ORDER BY q.display_order
-      LIMIT ? OFFSET ?
-    `, queryParams)
+    const questions = await prisma.question.findMany({
+      where,
+      orderBy: { displayOrder: 'asc' },
+      skip: offset,
+      take: limit,
+      include: {
+        subdomain: {
+          select: {
+            id: true,
+            name: true,
+            nameAr: true,
+            domain: {
+              select: { id: true, name: true }
+            }
+          }
+        },
+        _count: {
+          select: { answerOptions: true }
+        }
+      }
+    })
+
+    // Map to expected format
+    const mappedQuestions = questions.map(q => ({
+      id: q.id,
+      code: q.code,
+      title_en: q.title,
+      title_ar: q.titleAr,
+      text_en: q.text,
+      text_ar: q.textAr,
+      help_text: q.helpText,
+      help_text_ar: q.helpTextAr,
+      icon: q.icon,
+      subdomain_id: q.subdomainId,
+      subdomain_name_en: q.subdomain?.name,
+      subdomain_name_ar: q.subdomain?.nameAr,
+      domain_id: q.subdomain?.domain?.id,
+      domain_name: q.subdomain?.domain?.name,
+      display_order: q.displayOrder,
+      is_required: q.isRequired,
+      is_active: q.isActive,
+      answer_count: q._count.answerOptions
+    }))
 
     return NextResponse.json({
       success: true,
-      questions,
+      questions: mappedQuestions,
       pagination: {
         page,
         limit,
@@ -79,23 +98,122 @@ export async function GET(request) {
   }
 }
 
-export async function PUT(request) {
+export async function POST(request) {
   try {
-    const database = await openDatabase()
     const body = await request.json()
 
     const {
-      id,
+      subdomain_id,
+      code,
       title_en,
       title_ar,
       text_en,
       text_ar,
-      scenario_en,
-      scenario_ar,
-      subdomain_id,
+      help_text,
+      help_text_ar,
+      icon,
       display_order,
-      priority,
-      icon
+      is_required
+    } = body
+
+    if (!subdomain_id || !title_en || !text_en) {
+      return NextResponse.json({
+        success: false,
+        error: 'Subdomain, title, and question text are required'
+      }, { status: 400 })
+    }
+
+    // Verify subdomain exists
+    const subdomain = await prisma.subdomain.findUnique({
+      where: { id: subdomain_id }
+    })
+
+    if (!subdomain) {
+      return NextResponse.json({
+        success: false,
+        error: 'Subdomain not found'
+      }, { status: 404 })
+    }
+
+    // Get the next display order if not provided
+    let order = display_order
+    if (order === undefined || order === null) {
+      const lastQuestion = await prisma.question.findFirst({
+        orderBy: { displayOrder: 'desc' }
+      })
+      order = lastQuestion ? lastQuestion.displayOrder + 1 : 1
+    }
+
+    // Generate code if not provided
+    let questionCode = code
+    if (!questionCode) {
+      const questionCount = await prisma.question.count()
+      questionCode = `Q${questionCount + 1}`
+    }
+
+    const newQuestion = await prisma.question.create({
+      data: {
+        subdomainId: subdomain_id,
+        code: questionCode,
+        title: title_en,
+        titleAr: title_ar || null,
+        text: text_en,
+        textAr: text_ar || null,
+        helpText: help_text || null,
+        helpTextAr: help_text_ar || null,
+        icon: icon || '📋',
+        displayOrder: parseInt(order),
+        isRequired: is_required !== false,
+        isActive: true
+      }
+    })
+
+    return NextResponse.json({
+      success: true,
+      message: 'Question created successfully',
+      question: {
+        id: newQuestion.id,
+        code: newQuestion.code,
+        title_en: newQuestion.title,
+        subdomain_id: newQuestion.subdomainId
+      }
+    })
+
+  } catch (error) {
+    console.error('Error creating question:', error)
+
+    if (error.code === 'P2002' && error.meta?.target?.includes('code')) {
+      return NextResponse.json({
+        success: false,
+        error: 'A question with this code already exists'
+      }, { status: 400 })
+    }
+
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to create question'
+    }, { status: 500 })
+  }
+}
+
+export async function PUT(request) {
+  try {
+    const body = await request.json()
+
+    const {
+      id,
+      subdomain_id,
+      code,
+      title_en,
+      title_ar,
+      text_en,
+      text_ar,
+      help_text,
+      help_text_ar,
+      icon,
+      display_order,
+      is_required,
+      is_active
     } = body
 
     if (!id) {
@@ -105,28 +223,28 @@ export async function PUT(request) {
       }, { status: 400 })
     }
 
-    await database.query(`
-      UPDATE questions
-      SET title_en = ?,
-          title_ar = ?,
-          text_en = ?,
-          text_ar = ?,
-          scenario_en = ?,
-          scenario_ar = ?,
-          subdomain_id = ?,
-          display_order = ?,
-          priority = ?,
-          icon = ?
-      WHERE id = ?
-    `, [
-      title_en, title_ar, text_en, text_ar,
-      scenario_en, scenario_ar, subdomain_id,
-      display_order, priority, icon, id
-    ])
+    const updatedQuestion = await prisma.question.update({
+      where: { id },
+      data: {
+        subdomainId: subdomain_id || undefined,
+        code: code || undefined,
+        title: title_en || undefined,
+        titleAr: title_ar,
+        text: text_en || undefined,
+        textAr: text_ar,
+        helpText: help_text,
+        helpTextAr: help_text_ar,
+        icon: icon,
+        displayOrder: display_order !== undefined ? parseInt(display_order) : undefined,
+        isRequired: is_required !== undefined ? is_required : undefined,
+        isActive: is_active !== undefined ? is_active : undefined
+      }
+    })
 
     return NextResponse.json({
       success: true,
-      message: 'Question updated successfully'
+      message: 'Question updated successfully',
+      question: updatedQuestion
     })
 
   } catch (error) {
@@ -138,61 +256,8 @@ export async function PUT(request) {
   }
 }
 
-export async function POST(request) {
-  try {
-    const database = await openDatabase()
-    const body = await request.json()
-
-    const {
-      id,
-      title_en,
-      title_ar,
-      text_en,
-      text_ar,
-      scenario_en,
-      scenario_ar,
-      subdomain_id,
-      display_order,
-      priority,
-      icon
-    } = body
-
-    if (!id || !title_en || !text_en) {
-      return NextResponse.json({
-        success: false,
-        error: 'ID, title, and text are required'
-      }, { status: 400 })
-    }
-
-    await database.query(`
-      INSERT INTO questions (
-        id, title_en, title_ar, text_en, text_ar,
-        scenario_en, scenario_ar, subdomain_id,
-        display_order, priority, icon
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      id, title_en, title_ar || '', text_en, text_ar || '',
-      scenario_en || '', scenario_ar || '', subdomain_id,
-      display_order || 999, priority || 0, icon || '❓'
-    ])
-
-    return NextResponse.json({
-      success: true,
-      message: 'Question created successfully'
-    })
-
-  } catch (error) {
-    console.error('Error creating question:', error)
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to create question'
-    }, { status: 500 })
-  }
-}
-
 export async function DELETE(request) {
   try {
-    const database = await openDatabase()
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
 
@@ -203,11 +268,10 @@ export async function DELETE(request) {
       }, { status: 400 })
     }
 
-    // Delete question options first (foreign key constraint)
-    await database.query('DELETE FROM question_options WHERE question_id = ?', [id])
-
-    // Delete question
-    await database.query('DELETE FROM questions WHERE id = ?', [id])
+    // Delete question (cascade will delete answer options)
+    await prisma.question.delete({
+      where: { id }
+    })
 
     return NextResponse.json({
       success: true,

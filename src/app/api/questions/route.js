@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { openDatabase } from '../../../lib/database.js';
+import prisma from '../../../lib/prisma.js';
 
 export async function GET(request) {
   try {
@@ -7,22 +7,20 @@ export async function GET(request) {
     const language = searchParams.get('lang') || 'en';
     const assessmentCode = searchParams.get('code');
 
-    const db = await openDatabase();
-
     // Get snapshotted question list from assessment code
     let questionList = [];
     if (assessmentCode) {
-      const [rows] = await db.execute(`
-        SELECT question_list, assessment_type FROM assessment_codes WHERE code = ?
-      `, [assessmentCode]);
+      const codeData = await prisma.assessmentCode.findUnique({
+        where: { code: assessmentCode },
+        select: { questionList: true, assessmentType: true }
+      });
 
-      const codeData = rows[0];
-      if (codeData && codeData.question_list) {
+      if (codeData && codeData.questionList) {
         // Handle question_list - can be JSON array, comma-separated string, or already parsed array
-        if (Array.isArray(codeData.question_list)) {
-          questionList = codeData.question_list;
-        } else if (typeof codeData.question_list === 'string') {
-          const listStr = codeData.question_list.trim();
+        if (Array.isArray(codeData.questionList)) {
+          questionList = codeData.questionList;
+        } else if (typeof codeData.questionList === 'string') {
+          const listStr = codeData.questionList.trim();
           if (listStr.startsWith('[')) {
             // It's a JSON string
             questionList = JSON.parse(listStr);
@@ -36,79 +34,93 @@ export async function GET(request) {
 
     // If no question list found, fall back to all questions (for backward compatibility)
     if (questionList.length === 0) {
-      const [allQuestions] = await db.execute(`
-        SELECT id FROM questions ORDER BY display_order
-      `);
-      questionList = allQuestions.map(q => q.id);
+      const allQuestions = await prisma.question.findMany({
+        select: { code: true },
+        orderBy: { displayOrder: 'asc' }
+      });
+      questionList = allQuestions.map(q => q.code).filter(Boolean);
     }
 
-    // Build query to get only the snapshotted questions
-    let questionRows = [];
+    // Get only the snapshotted questions - search by code (Q1, Q2, etc.) not by id
+    let questions = [];
     if (questionList.length > 0) {
-      const placeholders = questionList.map(() => '?').join(',');
-      const questionQuery = `
-        SELECT
-          q.id,
-          q.subdomain_id as subdomain,
-          q.title_en,
-          q.title_ar,
-          q.text_en,
-          q.text_ar,
-          q.scenario_en,
-          q.scenario_ar,
-          q.icon,
-          q.priority
-        FROM questions q
-        WHERE q.id IN (${placeholders})
-        ORDER BY CAST(REPLACE(q.id, 'Q', '') AS UNSIGNED)
-      `;
-
-      const [results] = await db.execute(questionQuery, questionList);
-      questionRows = results;
+      questions = await prisma.question.findMany({
+        where: { code: { in: questionList } },
+        select: {
+          id: true,
+          code: true,
+          subdomainId: true,
+          title: true,
+          titleAr: true,
+          text: true,
+          textAr: true,
+          helpText: true,
+          helpTextAr: true,
+          icon: true,
+          displayOrder: true
+        },
+        orderBy: { displayOrder: 'asc' }
+      });
     }
 
-    const questions = questionRows;
-
-    // Get options for each question
+    // Get options for each question from the answer_options table
     const questionsWithOptions = await Promise.all(
       questions.map(async (question) => {
-        const [optionRows] = await db.execute(`
-          SELECT
-            option_key,
-            option_text_en,
-            option_text_ar,
-            score_value as value,
-            display_order
-          FROM question_options
-          WHERE question_id = ?
-          ORDER BY display_order
-        `, [question.id]);
+        // Get options from answer_options table
+        const options = await prisma.answerOption.findMany({
+          where: { questionId: question.id },
+          select: {
+            id: true,
+            text: true,
+            textAr: true,
+            scoreValue: true,
+            displayOrder: true,
+            isSpecial: true,
+            specialType: true,
+            maturityLevel: {
+              select: {
+                levelNumber: true,
+                name: true
+              }
+            }
+          },
+          orderBy: [
+            { displayOrder: 'asc' },
+            { scoreValue: 'asc' }
+          ]
+        });
 
-        const options = optionRows;
+        // Separate regular options from special options (NA/NS)
+        const regularOptions = options.filter(opt => !opt.isSpecial && opt.specialType !== 'NA' && opt.specialType !== 'NS');
+        const specialOptions = options.filter(opt => opt.isSpecial || opt.specialType === 'NA' || opt.specialType === 'NS');
 
-        // Separate scoring options (A,B,C,D,E) from NA/NS
-        const scoringOptions = options.filter(opt => !['NA', 'NS'].includes(opt.option_key));
-        const fixedOptions = options.filter(opt => ['NA', 'NS'].includes(opt.option_key));
+        // Shuffle regular options randomly
+        const shuffledRegular = regularOptions.sort(() => Math.random() - 0.5);
 
-        // Shuffle scoring options randomly
-        const shuffledScoring = scoringOptions.sort(() => Math.random() - 0.5);
-
-        // Combine: shuffled scoring options + fixed NA/NS at end
-        const shuffledOptions = [...shuffledScoring, ...fixedOptions];
+        // Combine: shuffled regular options + special options at end
+        const allOptions = [...shuffledRegular, ...specialOptions];
 
         return {
           id: question.id,
-          subdomain: question.subdomain,
-          title: language === 'ar' ? question.title_ar : question.title_en,
-          question: language === 'ar' ? question.text_ar : question.text_en,
-          scenario: language === 'ar' ? question.scenario_ar : question.scenario_en,
+          subdomain: question.subdomainId,
+          title: language === 'ar' ? (question.titleAr || question.title) : question.title,
+          question: language === 'ar' ? (question.textAr || question.text) : question.text,
+          scenario: language === 'ar' ? (question.helpTextAr || question.helpText) : question.helpText,
           icon: question.icon || '📋',
-          options: shuffledOptions.map(opt => ({
-            value: opt.option_key === 'NA' ? 'na' : 
-                   opt.option_key === 'NS' ? 'ns' : 
-                   opt.value,
-            text: language === 'ar' ? opt.option_text_ar : opt.option_text_en
-          }))
+          options: allOptions.map(opt => {
+            // Handle special options (NA/NS)
+            if (opt.isSpecial || opt.specialType === 'NA' || opt.specialType === 'NS') {
+              return {
+                value: opt.specialType === 'NA' ? 'na' : opt.specialType === 'NS' ? 'ns' : opt.scoreValue,
+                text: language === 'ar' ? (opt.textAr || opt.text) : opt.text
+              };
+            }
+            // Regular maturity level options
+            return {
+              value: opt.scoreValue,
+              text: language === 'ar' ? (opt.textAr || opt.text) : opt.text
+            };
+          })
         };
       })
     );
@@ -123,7 +135,8 @@ export async function GET(request) {
     console.error('Error fetching questions:', error);
     return NextResponse.json({
       success: false,
-      error: 'Failed to fetch questions'
+      error: 'Failed to fetch questions',
+      details: error.message
     }, { status: 500 });
   }
 }

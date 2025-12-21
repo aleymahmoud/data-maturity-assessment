@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { openDatabase } from '../../../lib/database.js';
+import prisma from '../../../lib/prisma.js';
 
 export async function POST(request) {
   try {
@@ -12,72 +12,70 @@ export async function POST(request) {
       }, { status: 400 });
     }
 
-    // Simple code validation - just check if the code exists
-    const database = await openDatabase();
-
-    const [rows] = await database.execute(`
-      SELECT code, organization_name, assessment_type
-      FROM assessment_codes
-      WHERE code = ? AND expires_at > NOW()
-    `, [code]);
-
-    const codeRecord = rows[0];
+    // Simple code validation - just check if the code exists and is not expired
+    const codeRecord = await prisma.assessmentCode.findUnique({
+      where: { code }
+    });
 
     if (!codeRecord) {
       return NextResponse.json({
         valid: false,
-        error: 'Invalid or expired assessment code'
+        error: 'Invalid assessment code'
       });
     }
 
-    // Check if there's a completed assessment for this code
-    const [sessionRows] = await database.execute(`
-      SELECT s.*, u.name, u.email, u.organization, u.role_title, u.selected_role_id
-      FROM assessment_sessions s
-      LEFT JOIN users u ON s.user_id = u.id
-      WHERE s.code = ?
-      ORDER BY s.session_start DESC
-      LIMIT 1
-    `, [code]);
+    // Check if expired
+    if (codeRecord.expiresAt && new Date(codeRecord.expiresAt) < new Date()) {
+      return NextResponse.json({
+        valid: false,
+        error: 'Assessment code has expired'
+      });
+    }
+
+    // Check if there's an existing session for this code
+    const existingSession = await prisma.assessmentSession.findFirst({
+      where: { code },
+      include: {
+        user: true
+      },
+      orderBy: { sessionStart: 'desc' }
+    });
 
     // If there's a completed session, redirect to results
-    if (sessionRows.length > 0 && sessionRows[0].status === 'completed') {
-      const session = sessionRows[0];
-
-      console.log('✅ Found completed assessment for code:', code, 'sessionId:', session.id);
+    if (existingSession && existingSession.status === 'completed') {
+      console.log('✅ Found completed assessment for code:', code, 'sessionId:', existingSession.id);
 
       return NextResponse.json({
         valid: true,
         isCompleted: true,
         hasUserData: true,
-        organizationName: codeRecord.organization_name,
-        assessmentType: codeRecord.assessment_type,
-        sessionId: session.id,
+        organizationName: codeRecord.organizationName,
+        assessmentType: codeRecord.assessmentType,
+        sessionId: existingSession.id,
         userData: {
-          name: session.name,
-          email: session.email,
-          organization: session.organization,
-          roleTitle: session.role_title,
-          selectedRole: session.selected_role_id
+          name: existingSession.user.name,
+          email: existingSession.user.email,
+          organization: existingSession.user.organization,
+          roleTitle: existingSession.user.roleTitle,
+          selectedRole: existingSession.user.selectedRoleId
         }
       });
     }
 
-    // If there's an existing session, check if user has data
-    if (sessionRows.length > 0) {
-      const session = sessionRows[0];
+    // If there's an existing session (in progress), check if user has data
+    if (existingSession) {
       return NextResponse.json({
         valid: true,
         isCompleted: false,
         hasUserData: true,
-        organizationName: codeRecord.organization_name,
-        assessmentType: codeRecord.assessment_type,
+        organizationName: codeRecord.organizationName,
+        assessmentType: codeRecord.assessmentType,
         existingUser: {
-          name: session.name,
-          email: session.email,
-          organization: session.organization,
-          roleTitle: session.role_title,
-          selectedRole: session.selected_role_id
+          name: existingSession.user.name,
+          email: existingSession.user.email,
+          organization: existingSession.user.organization,
+          roleTitle: existingSession.user.roleTitle,
+          selectedRole: existingSession.user.selectedRoleId
         }
       });
     }
@@ -87,8 +85,8 @@ export async function POST(request) {
       valid: true,
       isCompleted: false,
       hasUserData: false,
-      organizationName: codeRecord.organization_name,
-      assessmentType: codeRecord.assessment_type
+      organizationName: codeRecord.organizationName,
+      assessmentType: codeRecord.assessmentType
     });
 
   } catch (error) {

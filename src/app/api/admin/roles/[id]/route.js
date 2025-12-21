@@ -1,49 +1,15 @@
 import { NextResponse } from 'next/server';
-import { openDatabase } from '../../../../../lib/database.js';
+import prisma from '../../../../../lib/prisma.js';
 
-export async function PUT(request, { params }) {
+export async function GET(request, { params }) {
   try {
-    const { id } = params;
-    const body = await request.json();
-    const { title, description, examples, estimatedTime, icon, subdomains, displayOrder } = body;
+    const { id } = await params;
 
-    if (!title) {
-      return NextResponse.json({
-        success: false,
-        error: 'Role title is required'
-      }, { status: 400 });
-    }
+    const role = await prisma.role.findUnique({
+      where: { id }
+    });
 
-    const database = await openDatabase();
-
-    // Calculate dimension count from subdomains
-    const dimensionCount = Array.isArray(subdomains) ? subdomains.length : 0;
-
-    const [result] = await database.execute(`
-      UPDATE roles
-      SET title = ?,
-          description = ?,
-          examples = ?,
-          estimated_time = ?,
-          dimension_count = ?,
-          icon = ?,
-          subdomains = ?,
-          display_order = ?,
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `, [
-      title,
-      description || '',
-      JSON.stringify(examples || []),
-      estimatedTime || '',
-      dimensionCount,
-      icon || '📋',
-      JSON.stringify(subdomains || []),
-      displayOrder || 0,
-      id
-    ]);
-
-    if (result.affectedRows === 0) {
+    if (!role) {
       return NextResponse.json({
         success: false,
         error: 'Role not found'
@@ -52,11 +18,62 @@ export async function PUT(request, { params }) {
 
     return NextResponse.json({
       success: true,
-      message: 'Role updated successfully'
+      role: {
+        id: role.id,
+        title: role.title,
+        description: role.description,
+        dimensions: role.dimensions ? JSON.parse(role.dimensions) : [],
+        createdAt: role.createdAt
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching role:', error);
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to fetch role'
+    }, { status: 500 });
+  }
+}
+
+export async function PUT(request, { params }) {
+  try {
+    const { id } = await params;
+    const body = await request.json();
+    const { title, description, dimensions } = body;
+
+    if (!title) {
+      return NextResponse.json({
+        success: false,
+        error: 'Role title is required'
+      }, { status: 400 });
+    }
+
+    const updatedRole = await prisma.role.update({
+      where: { id },
+      data: {
+        title,
+        description: description || null,
+        dimensions: dimensions ? JSON.stringify(dimensions) : null
+      }
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Role updated successfully',
+      role: updatedRole
     });
 
   } catch (error) {
     console.error('Error updating role:', error);
+
+    if (error.code === 'P2025') {
+      return NextResponse.json({
+        success: false,
+        error: 'Role not found'
+      }, { status: 404 });
+    }
+
     return NextResponse.json({
       success: false,
       error: 'Failed to update role'
@@ -66,32 +83,11 @@ export async function PUT(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
-    const database = await openDatabase();
-
-    // Check if role is in use by any users
-    const [usersWithRole] = await database.execute(`
-      SELECT COUNT(*) as count FROM users WHERE selected_role_id = ?
-    `, [id]);
-
-    if (usersWithRole[0].count > 0) {
-      return NextResponse.json({
-        success: false,
-        error: `Cannot delete role. It is currently assigned to ${usersWithRole[0].count} user(s).`
-      }, { status: 409 });
-    }
-
-    const [result] = await database.execute(`
-      DELETE FROM roles WHERE id = ?
-    `, [id]);
-
-    if (result.affectedRows === 0) {
-      return NextResponse.json({
-        success: false,
-        error: 'Role not found'
-      }, { status: 404 });
-    }
+    await prisma.role.delete({
+      where: { id }
+    });
 
     return NextResponse.json({
       success: true,
@@ -100,6 +96,14 @@ export async function DELETE(request, { params }) {
 
   } catch (error) {
     console.error('Error deleting role:', error);
+
+    if (error.code === 'P2025') {
+      return NextResponse.json({
+        success: false,
+        error: 'Role not found'
+      }, { status: 404 });
+    }
+
     return NextResponse.json({
       success: false,
       error: 'Failed to delete role'

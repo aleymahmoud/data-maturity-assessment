@@ -132,3 +132,121 @@ model Admin {
 
   @@map("admins")
 }
+
+model OrganizationRequest {
+  id               String   @id @default(cuid())
+  type             String   // "dma" (Data Maturity Assessment) or "consultation"
+  organizationName String   @map("organization_name")
+  organizationSize String?  @map("organization_size")
+  contactName      String   @map("contact_name")
+  contactEmail     String   @map("contact_email")
+  contactPhone     String?  @map("contact_phone")
+  jobTitle         String?  @map("job_title")
+  industry         String?
+  country          String?
+  message          String?
+  status           String   @default("pending") // pending, contacted, completed, cancelled
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("organization_requests")
+}
+
+// ============================================
+// ASSESSMENT STRUCTURE MODELS
+// ============================================
+
+model MaturityLevel {
+  id            String   @id @default(cuid())
+  levelNumber   Int      @unique @map("level_number") // 1, 2, 3, 4, 5
+  name          String   // "Initial", "Developing", "Defined", "Managed", "Optimized"
+  nameAr        String?  @map("name_ar")
+  description   String?  @db.Text
+  descriptionAr String?  @map("description_ar") @db.Text
+  minScore      Float    @map("min_score") // e.g., 1.0
+  maxScore      Float    @map("max_score") // e.g., 1.99
+  color         String?  // Hex color code for UI
+  icon          String?  // Emoji or icon identifier (e.g., "🌱", "📈", "🚀")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  answerOptions AnswerOption[]
+
+  @@map("maturity_levels")
+}
+
+model Domain {
+  id            String   @id @default(cuid())
+  name          String   // English name
+  nameAr        String?  @map("name_ar") // Arabic name
+  description   String?  @db.Text
+  descriptionAr String?  @map("description_ar") @db.Text
+  displayOrder  Int      @default(0) @map("display_order")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  subdomains Subdomain[]
+
+  @@map("domains")
+}
+
+model Subdomain {
+  id            String   @id @default(cuid())
+  domainId      String   @map("domain_id")
+  name          String   // English name
+  nameAr        String?  @map("name_ar") // Arabic name
+  description   String?  @db.Text
+  descriptionAr String?  @map("description_ar") @db.Text
+  displayOrder  Int      @default(0) @map("display_order")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  domain    Domain     @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  questions Question[]
+
+  @@map("subdomains")
+}
+
+model Question {
+  id            String   @id @default(cuid())
+  subdomainId   String   @map("subdomain_id")
+  code          String?  @unique // e.g., "Q1", "Q2" for reference
+  title         String   // Short title
+  titleAr       String?  @map("title_ar")
+  text          String   @db.Text // Full question text
+  textAr        String?  @map("text_ar") @db.Text
+  helpText      String?  @map("help_text") @db.Text
+  helpTextAr    String?  @map("help_text_ar") @db.Text
+  icon          String?  // Emoji or icon identifier
+  displayOrder  Int      @default(0) @map("display_order")
+  isRequired    Boolean  @default(true) @map("is_required")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  subdomain     Subdomain      @relation(fields: [subdomainId], references: [id], onDelete: Cascade)
+  answerOptions AnswerOption[]
+
+  @@map("questions")
+}
+
+model AnswerOption {
+  id              String   @id @default(cuid())
+  questionId      String   @map("question_id")
+  maturityLevelId String?  @map("maturity_level_id") // Optional for NA/NS options
+  text            String   @db.Text // Answer text
+  textAr          String?  @map("text_ar") @db.Text
+  scoreValue      Int      @map("score_value") // 1-5 for maturity, 0 for NA/NS
+  displayOrder    Int      @default(0) @map("display_order")
+  isSpecial       Boolean  @default(false) @map("is_special") // True for NA/NS options
+  specialType     String?  @map("special_type") // "NA" or "NS"
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  question      Question       @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  maturityLevel MaturityLevel? @relation(fields: [maturityLevelId], references: [id])
+
+  @@map("answer_options")
+}

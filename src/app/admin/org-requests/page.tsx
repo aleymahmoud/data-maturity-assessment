@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { FileText, Mail, Phone, Building, MapPin, Briefcase, Calendar, RefreshCw } from 'lucide-react'
+import { FileText, Mail, Phone, Building, MapPin, Briefcase, Calendar, RefreshCw, Tag } from 'lucide-react'
 
 export default function OrganizationRequestsPage() {
   const [requests, setRequests] = useState([])
@@ -9,6 +9,7 @@ export default function OrganizationRequestsPage() {
   const [error, setError] = useState('')
   const [selectedRequest, setSelectedRequest] = useState(null)
   const [filterStatus, setFilterStatus] = useState('all')
+  const [filterType, setFilterType] = useState('all')
 
   useEffect(() => {
     fetchRequests()
@@ -80,6 +81,28 @@ export default function OrganizationRequestsPage() {
     }
   }
 
+  const getTypeColor = (type) => {
+    switch (type) {
+      case 'dma':
+        return { bg: '#ede9fe', text: '#6d28d9', border: '#c4b5fd' }
+      case 'consultation':
+        return { bg: '#fef3c7', text: '#b45309', border: '#fcd34d' }
+      default:
+        return { bg: '#f3f4f6', text: '#374151', border: '#d1d5db' }
+    }
+  }
+
+  const getTypeLabel = (type) => {
+    switch (type) {
+      case 'dma':
+        return 'Data Maturity Assessment'
+      case 'consultation':
+        return 'Consultation'
+      default:
+        return type
+    }
+  }
+
   const formatDate = (dateString) => {
     const date = new Date(dateString)
     return date.toLocaleDateString('en-US', {
@@ -91,9 +114,12 @@ export default function OrganizationRequestsPage() {
     })
   }
 
-  const filteredRequests = filterStatus === 'all'
-    ? requests
-    : requests.filter(req => req.status === filterStatus)
+  // Apply both filters
+  const filteredRequests = requests.filter(req => {
+    const statusMatch = filterStatus === 'all' || req.status === filterStatus
+    const typeMatch = filterType === 'all' || req.type === filterType
+    return statusMatch && typeMatch
+  })
 
   const statusCounts = {
     all: requests.length,
@@ -101,6 +127,12 @@ export default function OrganizationRequestsPage() {
     contacted: requests.filter(r => r.status === 'contacted').length,
     completed: requests.filter(r => r.status === 'completed').length,
     cancelled: requests.filter(r => r.status === 'cancelled').length,
+  }
+
+  const typeCounts = {
+    all: requests.length,
+    dma: requests.filter(r => r.type === 'dma').length,
+    consultation: requests.filter(r => r.type === 'consultation').length,
   }
 
   if (error) {
@@ -159,10 +191,10 @@ export default function OrganizationRequestsPage() {
             margin: 0,
             marginBottom: '8px'
           }}>
-            Organization Assessment Requests
+            Organization Requests
           </h1>
           <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>
-            Manage and track organization assessment requests from potential clients
+            Manage and track organization requests for assessments and consultations
           </p>
         </div>
         <button
@@ -187,6 +219,50 @@ export default function OrganizationRequestsPage() {
         </button>
       </div>
 
+      {/* Type Filter */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '8px',
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+        border: '1px solid #e5e7eb',
+        marginBottom: '16px',
+        padding: '16px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '16px',
+        flexWrap: 'wrap'
+      }}>
+        <span style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+          Request Type:
+        </span>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {[
+            { key: 'all', label: 'All Types' },
+            { key: 'dma', label: 'Data Maturity Assessment' },
+            { key: 'consultation', label: 'Consultation' }
+          ].map(type => (
+            <button
+              key={type.key}
+              onClick={() => setFilterType(type.key)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '6px',
+                border: '1px solid',
+                borderColor: filterType === type.key ? '#6d28d9' : '#e5e7eb',
+                backgroundColor: filterType === type.key ? '#ede9fe' : 'white',
+                color: filterType === type.key ? '#6d28d9' : '#374151',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: '500',
+                transition: 'all 0.2s'
+              }}
+            >
+              {type.label} ({typeCounts[type.key]})
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Status Filter Tabs */}
       <div style={{
         backgroundColor: 'white',
@@ -196,35 +272,41 @@ export default function OrganizationRequestsPage() {
         marginBottom: '24px',
         padding: '16px',
         display: 'flex',
-        gap: '8px',
+        alignItems: 'center',
+        gap: '16px',
         flexWrap: 'wrap'
       }}>
-        {[
-          { key: 'all', label: 'All Requests' },
-          { key: 'pending', label: 'Pending' },
-          { key: 'contacted', label: 'Contacted' },
-          { key: 'completed', label: 'Completed' },
-          { key: 'cancelled', label: 'Cancelled' }
-        ].map(status => (
-          <button
-            key={status.key}
-            onClick={() => setFilterStatus(status.key)}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '6px',
-              border: '1px solid',
-              borderColor: filterStatus === status.key ? '#2563eb' : '#e5e7eb',
-              backgroundColor: filterStatus === status.key ? '#eff6ff' : 'white',
-              color: filterStatus === status.key ? '#1e40af' : '#374151',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'all 0.2s'
-            }}
-          >
-            {status.label} ({statusCounts[status.key]})
-          </button>
-        ))}
+        <span style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+          Status:
+        </span>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {[
+            { key: 'all', label: 'All' },
+            { key: 'pending', label: 'Pending' },
+            { key: 'contacted', label: 'Contacted' },
+            { key: 'completed', label: 'Completed' },
+            { key: 'cancelled', label: 'Cancelled' }
+          ].map(status => (
+            <button
+              key={status.key}
+              onClick={() => setFilterStatus(status.key)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '6px',
+                border: '1px solid',
+                borderColor: filterStatus === status.key ? '#2563eb' : '#e5e7eb',
+                backgroundColor: filterStatus === status.key ? '#eff6ff' : 'white',
+                color: filterStatus === status.key ? '#1e40af' : '#374151',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: '500',
+                transition: 'all 0.2s'
+              }}
+            >
+              {status.label} ({statusCounts[status.key]})
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Requests List */}
@@ -252,9 +334,9 @@ export default function OrganizationRequestsPage() {
             <FileText size={48} color="#d1d5db" style={{ margin: '0 auto 16px' }} />
             <p style={{ fontSize: '16px', marginBottom: '8px' }}>No requests found</p>
             <p style={{ fontSize: '14px', color: '#9ca3af' }}>
-              {filterStatus === 'all'
-                ? 'There are no organization assessment requests yet.'
-                : `There are no ${filterStatus} requests.`}
+              {filterStatus === 'all' && filterType === 'all'
+                ? 'There are no organization requests yet.'
+                : 'No requests match the selected filters.'}
             </p>
           </div>
         ) : (
@@ -265,6 +347,16 @@ export default function OrganizationRequestsPage() {
             }}>
               <thead style={{ backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
                 <tr>
+                  <th style={{
+                    padding: '12px 16px',
+                    textAlign: 'left',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    color: '#6b7280',
+                    textTransform: 'uppercase'
+                  }}>
+                    Type
+                  </th>
                   <th style={{
                     padding: '12px 16px',
                     textAlign: 'left',
@@ -330,6 +422,7 @@ export default function OrganizationRequestsPage() {
               <tbody>
                 {filteredRequests.map((request, index) => {
                   const statusStyle = getStatusColor(request.status)
+                  const typeStyle = getTypeColor(request.type)
                   return (
                     <tr
                       key={request.id}
@@ -341,6 +434,20 @@ export default function OrganizationRequestsPage() {
                       onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
                       onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'white'}
                     >
+                      <td style={{ padding: '16px' }}>
+                        <span style={{
+                          padding: '4px 8px',
+                          borderRadius: '6px',
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          backgroundColor: typeStyle.bg,
+                          color: typeStyle.text,
+                          border: `1px solid ${typeStyle.border}`,
+                          textTransform: 'uppercase'
+                        }}>
+                          {request.type === 'dma' ? 'DMA' : 'Consult'}
+                        </span>
+                      </td>
                       <td style={{ padding: '16px' }}>
                         <div style={{ fontWeight: '500', color: '#111827', marginBottom: '4px' }}>
                           {request.organization_name}
@@ -447,14 +554,32 @@ export default function OrganizationRequestsPage() {
               justifyContent: 'space-between',
               alignItems: 'center'
             }}>
-              <h2 style={{
-                fontSize: '20px',
-                fontWeight: '600',
-                color: '#111827',
-                margin: 0
-              }}>
-                Request Details
-              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <h2 style={{
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: '#111827',
+                  margin: 0
+                }}>
+                  Request Details
+                </h2>
+                {(() => {
+                  const typeStyle = getTypeColor(selectedRequest.type)
+                  return (
+                    <span style={{
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      backgroundColor: typeStyle.bg,
+                      color: typeStyle.text,
+                      border: `1px solid ${typeStyle.border}`
+                    }}>
+                      {getTypeLabel(selectedRequest.type)}
+                    </span>
+                  )
+                })()}
+              </div>
               <button
                 onClick={() => setSelectedRequest(null)}
                 style={{

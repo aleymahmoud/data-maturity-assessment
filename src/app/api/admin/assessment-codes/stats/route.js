@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server'
-import { openDatabase } from '../../../../../lib/database.js'
+import prisma from '../../../../../lib/prisma.js'
 
 export async function GET(request) {
   try {
-    const database = await openDatabase()
     const { searchParams } = new URL(request.url)
 
     // Get query parameters for filtering
@@ -11,25 +10,22 @@ export async function GET(request) {
     const type = searchParams.get('type') || 'all'
     const organization = searchParams.get('organization') || 'all'
 
-    // Build WHERE clause for filtering
-    let whereConditions = []
-    let params = []
+    // Build Prisma where clause
+    const where = {}
 
     if (organization && organization !== 'all') {
-      whereConditions.push('organization_name = ?')
-      params.push(organization)
+      where.organizationName = organization
     }
 
     if (type && type !== 'all') {
-      whereConditions.push('assessment_type = ?')
-      params.push(type)
+      where.assessmentType = type
     }
 
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
-
-    // Get all codes to calculate statuses
-    const query = `SELECT * FROM assessment_codes ${whereClause}`
-    const [codes] = await database.execute(query, params)
+    // Get all codes matching criteria
+    const codes = await prisma.assessmentCode.findMany({
+      where,
+      orderBy: { createdAt: 'desc' }
+    })
 
     // Calculate stats
     let total = 0
@@ -43,10 +39,9 @@ export async function GET(request) {
     const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
 
     codes.forEach(code => {
-      const expiresAt = new Date(code.expires_at)
-      const isExpired = expiresAt < now
-      const isUsedUp = code.usage_count >= code.max_uses
-      const isManuallyInactive = code.is_active === 0
+      const expiresAt = code.expiresAt ? new Date(code.expiresAt) : null
+      const isExpired = expiresAt && expiresAt < now
+      const isUsedUp = code.isUsed
 
       let codeStatus = 'active'
       if (isExpired) {
@@ -55,19 +50,16 @@ export async function GET(request) {
       } else if (isUsedUp) {
         codeStatus = 'used_up'
         used_up++
-      } else if (isManuallyInactive) {
-        codeStatus = 'inactive'
-        inactive++
       } else {
         active++
 
         // Check if expiring soon (within 30 days)
-        if (expiresAt <= thirtyDaysFromNow) {
+        if (expiresAt && expiresAt <= thirtyDaysFromNow) {
           expiring_soon++
         }
       }
 
-      // Apply status filter
+      // Apply status filter for total count
       if (status === 'all' || status === codeStatus) {
         total++
       }
@@ -76,15 +68,13 @@ export async function GET(request) {
     // If a specific status filter is applied, recalculate counts
     if (status !== 'all') {
       total = codes.filter(code => {
-        const expiresAt = new Date(code.expires_at)
-        const isExpired = expiresAt < now
-        const isUsedUp = code.usage_count >= code.max_uses
-        const isManuallyInactive = code.is_active === 0
+        const expiresAt = code.expiresAt ? new Date(code.expiresAt) : null
+        const isExpired = expiresAt && expiresAt < now
+        const isUsedUp = code.isUsed
 
         let codeStatus = 'active'
         if (isExpired) codeStatus = 'expired'
         else if (isUsedUp) codeStatus = 'used_up'
-        else if (isManuallyInactive) codeStatus = 'inactive'
 
         return codeStatus === status
       }).length
