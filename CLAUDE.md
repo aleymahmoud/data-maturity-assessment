@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Data Maturity Assessment Tool built with Next.js 15. The application provides a comprehensive assessment system where organizations can evaluate their data maturity across 11 key dimensions. It supports role-based assessments, multilingual interface (English/Arabic), and generates personalized recommendations.
+This is **Omnisight Analytics**, a data-driven insights and analytics tools platform built with Next.js 15. The flagship tool is the Data Maturity Assessment, which provides a comprehensive assessment system where organizations can evaluate their data maturity across 11 key dimensions. The platform supports role-based assessments, multilingual interface (English/Arabic), and generates personalized recommendations.
+
+The architecture is designed to support multiple analytics tools including the Data Maturity Assessment (`/dma`), with future expansion planned for forecasting tools, data quality assessment, and other analytics capabilities.
 
 ## Development Commands
 

@@ -1,36 +1,92 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Omnisight Analytics
+
+**Omnisight Analytics** is a data-driven insights and analytics tools platform built with Next.js 15. The platform provides organizations with comprehensive tools to evaluate and improve their data capabilities.
+
+## Featured Tools
+
+### Data Maturity Assessment (`/dma`)
+Our flagship tool that helps organizations evaluate their data maturity across 11 key dimensions:
+- Role-based assessment tailored to your position
+- Multilingual support (English/Arabic with RTL)
+- Instant maturity score and detailed analysis
+- Actionable recommendations for improvement
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+- Node.js 18+
+- npm, yarn, pnpm, or bun
+- PostgreSQL database
 
+### Installation
+
+1. Clone the repository:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repository-url>
+cd omnisight-analytics
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+3. Set up environment variables:
+Create a `.env` file in the root directory with:
+```
+DATABASE_URL="your-database-url"
+NEXTAUTH_SECRET="your-secret-key"
+NEXTAUTH_URL="http://localhost:3001"
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Initialize the database:
+```bash
+npm run db:push
+```
 
-## Learn More
+5. Run the development server:
+```bash
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Open [http://localhost:3001](http://localhost:3001) with your browser to see the application.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Development Commands
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `npm run dev` - Start development server on port 3001
+- `npm run build` - Build the application for production
+- `npm run start` - Start production server on port 3001
+- `npm run lint` - Run ESLint for code quality checks
+- `npm run db:push` - Push Prisma schema to database
+- `npm run db:studio` - Open Prisma Studio for database management
+
+## Architecture
+
+The platform is designed to support multiple analytics tools:
+- `/dma` - Data Maturity Assessment
+- Future tools: Forecasting, Data Quality Assessment, and more
+
+See [CLAUDE.md](./CLAUDE.md) for detailed architecture documentation.
+
+## Tech Stack
+
+- **Framework**: Next.js 15.4.8 with App Router
+- **Database**: PostgreSQL with Prisma ORM
+- **Authentication**: NextAuth.js
+- **UI**: React 19 with Chart.js for visualizations
+- **Styling**: CSS with custom properties
 
 ## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The easiest way to deploy this application is to use the [Vercel Platform](https://vercel.com/new):
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Push your code to GitHub
+2. Import the repository in Vercel
+3. Configure environment variables
+4. Deploy
+
+Check out the [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## License
+
+This project is proprietary software owned by Omnisight Analytics.
