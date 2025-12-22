@@ -18,16 +18,38 @@ export default function Logo({ size = 'md', className = '' }) {
         xmlns="http://www.w3.org/2000/svg"
         className="drop-shadow-lg"
       >
-        {/* Background Circle for "O" */}
-        <circle
-          cx="42"
-          cy="50"
-          r="28"
-          fill="#1E1B4B"
-          opacity="0.95"
-        />
+        {/* Pie Chart "O" - Deep Indigo segments */}
+        <g>
+          {/* Segment 1 - 40% (144 degrees) */}
+          <path
+            d="M 42 50 L 42 22 A 28 28 0 0 1 64.5 34.5 Z"
+            fill="#1E1B4B"
+            opacity="0.95"
+          />
 
-        {/* Inner circle cutout for "O" */}
+          {/* Segment 2 - 30% (108 degrees) */}
+          <path
+            d="M 42 50 L 64.5 34.5 A 28 28 0 0 1 64.5 65.5 Z"
+            fill="#2D2960"
+            opacity="0.9"
+          />
+
+          {/* Segment 3 - 20% (72 degrees) */}
+          <path
+            d="M 42 50 L 64.5 65.5 A 28 28 0 0 1 42 78 Z"
+            fill="#3D3876"
+            opacity="0.85"
+          />
+
+          {/* Segment 4 - 10% (36 degrees) */}
+          <path
+            d="M 42 50 L 42 78 A 28 28 0 0 1 19.5 65.5 Z"
+            fill="#4D478C"
+            opacity="0.8"
+          />
+        </g>
+
+        {/* Inner white circle cutout */}
         <circle
           cx="42"
           cy="50"
@@ -35,37 +57,29 @@ export default function Logo({ size = 'md', className = '' }) {
           fill="white"
         />
 
-        {/* "A" letter overlapping */}
-        <g transform="translate(48, 28)">
-          {/* A main triangle */}
+        {/* "A" letter overlapping - More angular/robotic design */}
+        <g transform="translate(50, 28)">
+          {/* A main shape - geometric/robotic style */}
           <path
-            d="M 15 0 L 30 44 L 24 44 L 20 32 L 10 32 L 6 44 L 0 44 Z"
-            fill="#8B5CF6"
+            d="M 15 0 L 18 0 L 30 44 L 24 44 L 21 34 L 9 34 L 6 44 L 0 44 L 12 0 L 15 0 Z"
+            fill="#1E1B4B"
           />
-          {/* A cross bar */}
+          {/* A cross bar - rectangular and bold */}
           <rect
-            x="11"
-            y="25"
-            width="8"
-            height="3"
+            x="10"
+            y="24"
+            width="10"
+            height="4"
             fill="white"
-            opacity="0.9"
+            opacity="0.95"
           />
         </g>
 
-        {/* Subtle gradient overlay */}
-        <defs>
-          <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style={{ stopColor: '#4C1D95', stopOpacity: 0.3 }} />
-            <stop offset="100%" style={{ stopColor: '#8B5CF6', stopOpacity: 0.3 }} />
-          </linearGradient>
-        </defs>
-        <circle
-          cx="42"
-          cy="50"
-          r="28"
-          fill="url(#logoGradient)"
-        />
+        {/* Thin separator lines on pie chart for definition */}
+        <line x1="42" y1="50" x2="42" y2="22" stroke="white" strokeWidth="0.5" opacity="0.3" />
+        <line x1="42" y1="50" x2="64.5" y2="34.5" stroke="white" strokeWidth="0.5" opacity="0.3" />
+        <line x1="42" y1="50" x2="64.5" y2="65.5" stroke="white" strokeWidth="0.5" opacity="0.3" />
+        <line x1="42" y1="50" x2="42" y2="78" stroke="white" strokeWidth="0.5" opacity="0.3" />
       </svg>
     </div>
   );
