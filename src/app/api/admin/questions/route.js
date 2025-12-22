@@ -75,6 +75,7 @@ export async function GET(request) {
       display_order: q.displayOrder,
       is_required: q.isRequired,
       is_active: q.isActive,
+      assessment_types: q.assessmentTypes,
       answer_count: q._count.answerOptions
     }))
 
@@ -113,7 +114,8 @@ export async function POST(request) {
       help_text_ar,
       icon,
       display_order,
-      is_required
+      is_required,
+      assessment_types
     } = body
 
     if (!subdomain_id || !title_en || !text_en) {
@@ -164,7 +166,8 @@ export async function POST(request) {
         icon: icon || '📋',
         displayOrder: parseInt(order),
         isRequired: is_required !== false,
-        isActive: true
+        isActive: true,
+        assessmentTypes: assessment_types || 'full,quick'
       }
     })
 
@@ -213,7 +216,8 @@ export async function PUT(request) {
       icon,
       display_order,
       is_required,
-      is_active
+      is_active,
+      assessment_types
     } = body
 
     if (!id) {
@@ -237,7 +241,8 @@ export async function PUT(request) {
         icon: icon,
         displayOrder: display_order !== undefined ? parseInt(display_order) : undefined,
         isRequired: is_required !== undefined ? is_required : undefined,
-        isActive: is_active !== undefined ? is_active : undefined
+        isActive: is_active !== undefined ? is_active : undefined,
+        assessmentTypes: assessment_types || undefined
       }
     })
 

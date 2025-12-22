@@ -23,25 +23,25 @@ ChartJS.register(
   Legend
 );
 
-// Domain group color mapping
+// Domain group color mapping - Purple Theme
 const DOMAIN_COLORS = {
   'DATA_LIFECYCLE': {
-    border: 'rgba(40, 167, 69, 1)',
-    background: 'rgba(40, 167, 69, 0.2)',
-    point: 'rgba(40, 167, 69, 1)',
-    text: '#28a745'
+    border: 'rgba(139, 92, 246, 1)',
+    background: 'rgba(139, 92, 246, 0.2)',
+    point: 'rgba(139, 92, 246, 1)',
+    text: '#8B5CF6'
   },
   'GOVERNANCE_PROTECTION': {
-    border: 'rgba(245, 173, 46, 1)',
-    background: 'rgba(245, 173, 46, 0.2)',
-    point: 'rgba(245, 173, 46, 1)',
-    text: '#F5AD2E'
+    border: 'rgba(76, 29, 149, 1)',
+    background: 'rgba(76, 29, 149, 0.2)',
+    point: 'rgba(76, 29, 149, 1)',
+    text: '#4C1D95'
   },
   'ORGANIZATIONAL_ENABLERS': {
-    border: 'rgba(15, 44, 105, 1)',
-    background: 'rgba(15, 44, 105, 0.2)',
-    point: 'rgba(15, 44, 105, 1)',
-    text: '#0F2C69'
+    border: 'rgba(30, 27, 75, 1)',
+    background: 'rgba(30, 27, 75, 0.2)',
+    point: 'rgba(30, 27, 75, 1)',
+    text: '#1E1B4B'
   }
 };
 

@@ -50,7 +50,10 @@
       "Bash(npx prisma studio)",
       "Bash(npx prisma db push:*)",
       "Bash(npx next build:*)",
-      "Bash(ping:*)"
+      "Bash(ping:*)",
+      "Bash(exit 0)",
+      "Bash(git checkout:*)",
+      "Bash(npx prisma migrate:*)"
     ],
     "deny": [],
     "ask": []

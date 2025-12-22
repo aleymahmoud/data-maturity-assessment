@@ -438,32 +438,71 @@ export default function AssessmentCodesPage() {
     }
   }
 
-  const handleDeleteCode = (code) => {
+  const handleDeleteCode = (code, forceDelete = false) => {
+    const confirmMessage = forceDelete
+      ? `Are you sure you want to FORCE DELETE code "${code}" and ALL associated data (sessions, responses, results)? This action cannot be undone.`
+      : `Are you sure you want to delete code "${code}"? This action cannot be undone.`
+
+    const confirmTitle = forceDelete ? 'Force Delete Assessment Code' : 'Delete Assessment Code'
+
     showConfirmation(
-      'Delete Assessment Code',
-      `Are you sure you want to delete code "${code}"? This action cannot be undone.`,
+      confirmTitle,
+      confirmMessage,
       async () => {
         try {
-          const response = await fetch(`/api/admin/assessment-codes?code=${code}`, {
+          const url = forceDelete
+            ? `/api/admin/assessment-codes?code=${code}&force=true`
+            : `/api/admin/assessment-codes?code=${code}`
+
+          const response = await fetch(url, {
             method: 'DELETE'
           })
 
           const data = await response.json()
 
           if (response.ok) {
-            addNotification('Code deleted successfully', 'success')
+            const message = data.cascadeDeleted
+              ? 'Code and all associated data deleted successfully'
+              : 'Code deleted successfully'
+            addNotification(message, 'success')
             fetchCodes()
             fetchStats()
             fetchOrganizations() // ✅ Refresh organizations filter
           } else {
-            addNotification(`Failed to delete code: ${data.error}`, 'error')
+            // Check if this is a "has related data" error
+            if (data.details && (data.details.sessions > 0 || data.details.responses > 0 || data.details.results > 0)) {
+              // Show detailed error with option to force delete
+              const detailsMsg = [
+                data.details.sessions > 0 ? `${data.details.sessions} session(s)` : null,
+                data.details.responses > 0 ? `${data.details.responses} response(s)` : null,
+                data.details.results > 0 ? `${data.details.results} result(s)` : null
+              ].filter(Boolean).join(', ')
+
+              addNotification(
+                `Cannot delete code: has associated data (${detailsMsg}). Click to force delete.`,
+                'error'
+              )
+
+              // Show a follow-up confirmation for force delete
+              setTimeout(() => {
+                showConfirmation(
+                  'Force Delete Required',
+                  `Code "${code}" has associated data:\n\n${detailsMsg}\n\nDo you want to FORCE DELETE this code and ALL associated data? This cannot be undone.`,
+                  () => handleDeleteCode(code, true),
+                  'Force Delete',
+                  'danger'
+                )
+              }, 500)
+            } else {
+              addNotification(`Failed to delete code: ${data.error}`, 'error')
+            }
           }
         } catch (error) {
           console.error('Error deleting code:', error)
           addNotification('Failed to delete code. Please try again.', 'error')
         }
       },
-      'Delete Code',
+      forceDelete ? 'Force Delete' : 'Delete Code',
       'danger'
     )
   }

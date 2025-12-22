@@ -1,24 +1,24 @@
 /* Enhanced Mobile-First Responsive Design for Data Maturity Assessment App */
 
 :root {
-  /* Primary Colors */
-  --primary-navy: #0f2c69;
-  --accent-orange: #f5ad2e;
-  --secondary-blue: #7f7afe;
-  --light-gray: #ededed;
+  /* Primary Colors - Purple Theme */
+  --primary-navy: #1E1B4B;
+  --accent-orange: #8B5CF6;
+  --secondary-blue: #4C1D95;
+  --light-gray: #F3E8FF;
   --white: #ffffff;
-  
+
   /* Text Colors */
-  --text-primary: #0f2c69;
-  --text-secondary: #7f7afe;
-  --text-dark: #212529;
-  --text-light: #6c757d;
-  
+  --text-primary: #1E1B4B;
+  --text-secondary: #8B5CF6;
+  --text-dark: #1E1B4B;
+  --text-light: #4C1D95;
+
   /* Status Colors */
   --success: #28a745;
-  --warning: #f5ad2e;
+  --warning: #8B5CF6;
   --danger: #dc3545;
-  --info: #7f7afe;
+  --info: #8B5CF6;
   
   /* Typography - Mobile First */
   --font-primary: 'Montserrat', sans-serif;
@@ -107,6 +107,7 @@ p {
   min-height: 100vh;
   padding: var(--spacing-md) 0;
   width: 100%;
+  background: linear-gradient(to bottom right, #FAF5FF, #F3E8FF);
 }
 
 /* CARDS - Mobile First */
@@ -114,7 +115,7 @@ p {
 .role-card {
   background: var(--white);
   border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(15, 44, 105, 0.08);
+  box-shadow: 0 2px 12px rgba(139, 92, 246, 0.08);
   padding: var(--spacing-md);
   margin-bottom: var(--spacing-md);
   border-left: 4px solid var(--primary-navy);
@@ -134,13 +135,13 @@ p {
 .role-card:hover,
 .role-card:focus {
   border-color: var(--secondary-blue);
-  box-shadow: 0 4px 16px rgba(15, 44, 105, 0.12);
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.12);
   transform: translateY(-1px);
 }
 
 .role-card.selected {
   border-color: var(--primary-navy);
-  background: linear-gradient(135deg, rgba(15, 44, 105, 0.05), rgba(127, 122, 254, 0.05));
+  background: linear-gradient(135deg, rgba(30, 27, 75, 0.05), rgba(139, 92, 246, 0.05));
 }
 
 /* BUTTONS - Mobile First */
@@ -189,12 +190,12 @@ p {
 .btn-primary:hover,
 .btn-primary:focus {
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(15, 44, 105, 0.3);
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.3);
 }
 
 .btn-secondary:hover,
 .btn-secondary:focus {
-  background: #e09a2a;
+  background: #7C3AED;
   transform: translateY(-1px);
 }
 
@@ -257,12 +258,12 @@ input[type="radio"] {
 .radio-option:hover,
 .radio-option:focus-within {
   border-color: var(--secondary-blue);
-  background: rgba(127, 122, 254, 0.02);
+  background: rgba(139, 92, 246, 0.02);
 }
 
 .radio-option.selected {
   border-color: var(--primary-navy);
-  background: rgba(15, 44, 105, 0.05);
+  background: rgba(30, 27, 75, 0.05);
 }
 
 /* PROGRESS BAR - Mobile First */

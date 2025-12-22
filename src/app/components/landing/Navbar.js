@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import Logo from '../../../components/Logo';
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -13,7 +14,7 @@ export default function Navbar() {
   return (
     <nav className="landing-nav">
       <Link href="/" className="landing-logo">
-        <span className="landing-logo-icon">O</span>
+        <Logo size="sm" />
         Omnisight Analytics
       </Link>
 

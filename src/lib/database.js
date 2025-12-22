@@ -246,28 +246,41 @@ export async function saveAssessmentResponses(sessionId, responses, assessmentCo
 
     // Upsert each response
     for (const [questionId, response] of Object.entries(responses)) {
-      const scoreValue = (response === 'na' || response === 'ns') ? 0 : parseInt(response);
+      try {
+        const scoreValue = (response === 'na' || response === 'ns') ? 0 : parseInt(response);
 
-      await prisma.userResponse.upsert({
-        where: {
-          sessionId_questionId: {
-            sessionId,
-            questionId
-          }
-        },
-        update: {
-          selectedOption: response,
-          scoreValue: scoreValue,
-          answeredAt: new Date()
-        },
-        create: {
+        console.log(`Saving response for question ${questionId}:`, {
           sessionId,
           questionId,
-          selectedOption: response,
-          scoreValue: scoreValue,
-          assessmentCode: assessmentCode
-        }
-      });
+          response,
+          scoreValue,
+          assessmentCode
+        });
+
+        await prisma.userResponse.upsert({
+          where: {
+            sessionId_questionId: {
+              sessionId,
+              questionId
+            }
+          },
+          update: {
+            selectedOption: String(response),
+            scoreValue: scoreValue,
+            answeredAt: new Date()
+          },
+          create: {
+            sessionId,
+            questionId,
+            selectedOption: String(response),
+            scoreValue: scoreValue,
+            assessmentCode: assessmentCode
+          }
+        });
+      } catch (error) {
+        console.error(`Error saving response for question ${questionId}:`, error);
+        throw error;
+      }
     }
 
     // Update session progress

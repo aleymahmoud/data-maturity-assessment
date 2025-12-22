@@ -210,21 +210,22 @@ model Subdomain {
 }
 
 model Question {
-  id            String   @id @default(cuid())
-  subdomainId   String   @map("subdomain_id")
-  code          String?  @unique // e.g., "Q1", "Q2" for reference
-  title         String   // Short title
-  titleAr       String?  @map("title_ar")
-  text          String   @db.Text // Full question text
-  textAr        String?  @map("text_ar") @db.Text
-  helpText      String?  @map("help_text") @db.Text
-  helpTextAr    String?  @map("help_text_ar") @db.Text
-  icon          String?  // Emoji or icon identifier
-  displayOrder  Int      @default(0) @map("display_order")
-  isRequired    Boolean  @default(true) @map("is_required")
-  isActive      Boolean  @default(true) @map("is_active")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(cuid())
+  subdomainId     String   @map("subdomain_id")
+  code            String?  @unique // e.g., "Q1", "Q2" for reference
+  title           String   // Short title
+  titleAr         String?  @map("title_ar")
+  text            String   @db.Text // Full question text
+  textAr          String?  @map("text_ar") @db.Text
+  helpText        String?  @map("help_text") @db.Text
+  helpTextAr      String?  @map("help_text_ar") @db.Text
+  icon            String?  // Emoji or icon identifier
+  displayOrder    Int      @default(0) @map("display_order")
+  isRequired      Boolean  @default(true) @map("is_required")
+  isActive        Boolean  @default(true) @map("is_active")
+  assessmentTypes String   @default("full,quick") @map("assessment_types") // Comma-separated: "full", "quick", or "full,quick"
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   subdomain     Subdomain      @relation(fields: [subdomainId], references: [id], onDelete: Cascade)
   answerOptions AnswerOption[]

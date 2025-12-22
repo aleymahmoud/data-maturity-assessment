@@ -17,7 +17,7 @@ interface QuestionData {
   scenario_en: string;
   scenario_ar: string;
   subdomain_id: string;
-  priority: number;
+  assessment_types: string;
   display_order: number;
 }
 
@@ -129,17 +129,18 @@ export function QuestionEditor({ question, subdomains, onSave, onCancel }: Quest
         </div>
 
         <div>
-          <label style={labelStyle}>Priority</label>
+          <label style={labelStyle}>Assessment Types</label>
           <select
-            value={formData.priority}
-            onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) })}
+            value={formData.assessment_types}
+            onChange={(e) => setFormData({ ...formData, assessment_types: e.target.value })}
             style={{
               ...inputStyle,
               backgroundColor: 'white'
             }}
           >
-            <option value="0">Full Only</option>
-            <option value="1">Quick</option>
+            <option value="full">Full Assessment Only</option>
+            <option value="quick">Quick Assessment Only</option>
+            <option value="full,quick">Both (Full & Quick)</option>
           </select>
         </div>
 

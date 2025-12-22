@@ -3,7 +3,6 @@
 import { Suspense } from 'react';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 
 function AssessmentPageContent() {
   const [questions, setQuestions] = useState([]);
@@ -26,58 +25,46 @@ function AssessmentPageContent() {
   const role = searchParams.get('role') || '';
   const questionParam = parseInt(searchParams.get('question') || '0');
 
-  // Language-specific text - Memoized to prevent re-creation
+  // Language-specific text
   const getText = useCallback((key) => {
     const texts = {
       en: {
         loading: 'Loading questions...',
         error: 'Error Loading Questions',
         tryAgain: 'Try Again',
-        progress: 'Progress',
-        complete: 'Complete',
-        question: 'Question',
-        of: 'of',
-        answered: 'answered',
-        scenario: 'Scenario',
-        previous: 'Previous',
+        previous: 'Back',
         next: 'Next',
-        finish: 'Finish Assessment',
-        welcomeBack: 'Welcome back',
-        continuingAssessment: 'Continuing your assessment from where you left off.',
+        finish: 'Submit Assessment',
         submitting: 'Submitting...',
-        backToRole: 'Back to Role Selection',
-        language: 'Language',
         submitError: 'Failed to submit assessment. Please try again.',
-        allQuestionsRequired: 'Please answer all questions before submitting.'
+        na: 'N/A',
+        notSure: 'Not Sure',
+        welcomeBack: 'Welcome back',
+        continuingAssessment: 'Continuing your assessment from where you left off.'
       },
       ar: {
         loading: 'جاري تحميل الأسئلة...',
         error: 'خطأ في تحميل الأسئلة',
         tryAgain: 'حاول مرة أخرى',
-        progress: 'التقدم',
-        complete: 'مكتمل',
-        question: 'السؤال',
-        of: 'من',
-        answered: 'تمت الإجابة عليه',
-        scenario: 'السيناريو',
         previous: 'السابق',
         next: 'التالي',
         finish: 'إنهاء التقييم',
-        welcomeBack: 'مرحباً بعودتك',
-        continuingAssessment: 'متابعة تقييمك من حيث توقفت.',
         submitting: 'جاري الإرسال...',
-        backToRole: 'العودة لاختيار الدور',
-        language: 'اللغة',
-        submitError: 'فشل في إرسال التقييم. يرجى المحاولة مرة أخرى.',
-        allQuestionsRequired: 'يرجى الإجابة على جميع الأسئلة قبل الإرسال.'
+        submitError: 'فشل إرسال التقييم. يرجى المحاولة مرة أخرى.',
+        na: 'غير قابل للتطبيق',
+        notSure: 'غير متأكد',
+        welcomeBack: 'مرحبًا بعودتك',
+        continuingAssessment: 'مواصلة التقييم من حيث توقفت.'
       }
     };
-    return texts[language][key] || texts.en[key];
+    return texts[language][key] || texts['en'][key];
   }, [language]);
 
-  const fetchQuestions = useCallback(async () => {
+  const currentQuestion = questions[currentQuestionIndex] || {};
+
+  // Fetch questions from API
+  const fetchQuestions = useCallback(async (code) => {
     try {
-      const code = sessionStorage.getItem('assessmentCode');
       const response = await fetch(`/api/questions?lang=${language}&code=${code}`);
       const data = await response.json();
 
@@ -92,144 +79,70 @@ function AssessmentPageContent() {
     }
   }, [language]);
 
-const initializeAssessment = useCallback(async () => {
-  try {
-    setLoading(true);
+  const initializeAssessment = useCallback(async () => {
+    try {
+      setLoading(true);
 
-    // Check if we're resuming from code entry
-    const isResumingFromCode = searchParams.get('resume') === 'true';
-    const sessionIdFromUrl = searchParams.get('session');
-    
-    let sessionCode = '';
-    let userData = null;
-    let selectedRole = null;
-    
-    if (isResumingFromCode && sessionIdFromUrl) {
-      // Resuming from code entry - get stored resume data
-      const resumeDataStr = sessionStorage.getItem('resumeData');
+      const isResumingFromCode = searchParams.get('resume') === 'true';
+      const sessionIdFromUrl = searchParams.get('session');
 
-      if (!resumeDataStr) {
-        // No resume data found, fall back to regular flow
-        // Remove resume parameters and continue with normal session creation
-        const cleanUrl = `/assessment?lang=${language}`;
-        router.replace(cleanUrl);
+      let sessionCode = '';
+      let userData = null;
+      let selectedRole = null;
 
-        // Set flag to continue with regular flow below
-        sessionCode = sessionStorage.getItem('assessmentCode');
-        userData = sessionStorage.getItem('userData');
-        selectedRole = sessionStorage.getItem('selectedRole');
+      if (isResumingFromCode && sessionIdFromUrl) {
+        const resumeData = JSON.parse(sessionStorage.getItem('resumeData') || 'null');
+        if (resumeData) {
+          sessionCode = resumeData.code;
+          userData = resumeData.userData;
+          selectedRole = resumeData.userData.selectedRole;
+          setSessionId(sessionIdFromUrl);
+          setResumeUserData(userData);
+          setIsResuming(true);
+        }
       } else {
-      
-      const resumeData = JSON.parse(resumeDataStr);
-      sessionCode = sessionStorage.getItem('assessmentCode');
-      
-      // Set resume state
-      setIsResuming(true);
-      setResumeUserData(resumeData.userData);
-      setSessionId(resumeData.sessionId);
-      setAssessmentCode(sessionCode);
-      
-      // Extract role from roleTitle for URL
-      const roleMapping = {
-        'CEO': 'executive',
-        'COO': 'executive', 
-        'CTO': 'executive',
-        'CDO': 'executive',
-        'VP Strategy': 'executive',
-        'IT Director': 'it-technology',
-        'Data Engineer': 'it-technology',
-        'System Admin': 'it-technology',
-        'Program Manager': 'operations',
-        'Operations Director': 'operations',
-        'Data Analyst': 'analytics',
-        'Business Intelligence': 'analytics',
-        'Researcher': 'analytics',
-        'Compliance Officer': 'compliance',
-        'Risk Manager': 'compliance',
-        'Legal': 'compliance'
-      };
-      
-      // Find role or default to 'executive'
-      const detectedRole = Object.keys(roleMapping).find(key => 
-        resumeData.userData.roleTitle.toLowerCase().includes(key.toLowerCase())
-      );
-      selectedRole = roleMapping[detectedRole] || 'executive';
-      
-      // Update URL to include role
-      router.replace(`/assessment?lang=${language}&role=${selectedRole}&question=0&resume=true&session=${sessionIdFromUrl}`);
-
-      // For resume, skip session creation since session already exists
-      await fetchQuestions();
-      return;
+        const storedUserData = JSON.parse(sessionStorage.getItem('userData') || 'null');
+        if (storedUserData) {
+          userData = storedUserData;
+          selectedRole = storedUserData.selectedRole;
+          sessionCode = sessionStorage.getItem('assessmentCode') || '';
+          const storedSessionId = sessionStorage.getItem('sessionId');
+          if (storedSessionId) setSessionId(storedSessionId);
+        }
       }
-    } else {
-      // Regular flow - get stored session data
-      userData = sessionStorage.getItem('userData');
-      selectedRole = sessionStorage.getItem('selectedRole');
-      sessionCode = sessionStorage.getItem('assessmentCode');
 
-      if (!userData || !selectedRole || !sessionCode) {
-        router.push(`/dma/role-selection?lang=${language}`);
+      if (!sessionCode) {
+        router.push(`/dma/start?lang=${language}`);
         return;
       }
 
       setAssessmentCode(sessionCode);
-      setIsResuming(false);
-    }
+      await fetchQuestions(sessionCode);
 
-    // Common session creation for non-resume flows
-    if (!isResuming && userData && sessionCode) {
-      const sessionResponse = await fetch('/api/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          code: sessionCode,
-          userData: JSON.parse(userData),
-          language: language
-        })
-      });
-
-      const sessionData = await sessionResponse.json();
-
-      if (!sessionData.success) {
-        setError(sessionData.error || 'Failed to initialize session');
-        return;
+      if (sessionIdFromUrl) {
+        const savedResponsesStr = sessionStorage.getItem('assessmentResponses');
+        if (savedResponsesStr) {
+          setAllResponses(JSON.parse(savedResponsesStr));
+        }
       }
 
-      setSessionId(sessionData.sessionId);
-      setUserId(sessionData.userId);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error initializing assessment:', error);
+      setError('Failed to initialize assessment');
+      setLoading(false);
     }
-
-    // Fetch questions
-    await fetchQuestions();
-
-  } catch (error) {
-    console.error('Error initializing assessment:', error);
-    setError('Failed to initialize assessment');
-    initializationRef.current = false; // Reset flag on error
-  } finally {
-    setLoading(false);
-  }
-}, [searchParams, language, router, fetchQuestions]);
+  }, [searchParams, language, router, fetchQuestions]);
 
   useEffect(() => {
-    // Use ref to prevent double initialization in StrictMode
-    if (initializationRef.current) {
-      return;
+    if (!initializationRef.current) {
+      initializationRef.current = true;
+      initializeAssessment();
     }
-
-    initializationRef.current = true;
-    initializeAssessment();
   }, [initializeAssessment]);
 
   useEffect(() => {
-    if (questions.length > 0 && questionParam !== currentQuestionIndex) {
-      setCurrentQuestionIndex(questionParam);
-    }
-  }, [questions.length, questionParam, currentQuestionIndex]);
-
-  useEffect(() => {
-    if (questions.length > 0 && questions[currentQuestionIndex]?.options) {
+    if (questions.length > 0) {
       setShuffledOptions(questions[currentQuestionIndex].options);
     }
   }, [currentQuestionIndex, questions.length]);
@@ -240,23 +153,14 @@ const initializeAssessment = useCallback(async () => {
         ...prev,
         [questionId]: optionValue
       };
-
-      // Save to sessionStorage as backup
       sessionStorage.setItem('assessmentResponses', JSON.stringify(newResponses));
       return newResponses;
     });
   }, []);
 
   const handleSubmitAssessment = useCallback(async () => {
-    // Check if all questions are answered
-    const answeredCount = Object.keys(allResponses).length;
-    if (answeredCount < questions.length) {
-      alert(getText('allQuestionsRequired'));
-      return;
-    }
-
-    if (!sessionId || !assessmentCode) {
-      setError('Session or code not found');
+    if (Object.keys(allResponses).length < questions.length) {
+      setError(getText('submitError'));
       return;
     }
 
@@ -273,52 +177,45 @@ const initializeAssessment = useCallback(async () => {
         })
       });
 
-      const result = await response.json();
+      const data = await response.json();
 
-      if (result.success) {
-        // Clear session storage
+      if (data.success) {
         sessionStorage.removeItem('assessmentResponses');
-        sessionStorage.removeItem('assessmentCode');
-
-        // Redirect to results page (to be created)
-        router.push(`/dma/results?lang=${language}&role=${role}&session=${sessionId}`);
+        router.push(`/dma/results?session=${sessionId}&lang=${language}`);
       } else {
-        setError(result.error || getText('submitError'));
+        setError(data.error || getText('submitError'));
+        setSubmitting(false);
       }
     } catch (error) {
       console.error('Error submitting assessment:', error);
       setError(getText('submitError'));
-    } finally {
       setSubmitting(false);
     }
-  }, [allResponses, questions.length, sessionId, assessmentCode, getText, router, language, role]);
+  }, [allResponses, questions.length, sessionId, assessmentCode, getText, router, language]);
 
-const handleNext = useCallback(async () => {
-  // Auto-save current response before proceeding
-  try {
-    await fetch('/api/save-responses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId: sessionId,
-        responses: allResponses,
-        code: assessmentCode
-      })
-    });
-  } catch (error) {
-    console.error('Auto-save error:', error);
-    // Continue anyway - don't block user progress
-  }
+  const handleNext = useCallback(async () => {
+    try {
+      await fetch('/api/save-responses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: sessionId,
+          responses: allResponses,
+          code: assessmentCode
+        })
+      });
+    } catch (error) {
+      console.error('Auto-save error:', error);
+    }
 
-  if (currentQuestionIndex < questions.length - 1) {
-    const nextIndex = currentQuestionIndex + 1;
-    setCurrentQuestionIndex(nextIndex);
-    router.push(`/dma/questions?lang=${language}&role=${role}&question=${nextIndex}`);
-  } else {
-    // Last question - show submit
-    handleSubmitAssessment();
-  }
-}, [sessionId, allResponses, assessmentCode, currentQuestionIndex, questions.length, router, language, role, handleSubmitAssessment]);
+    if (currentQuestionIndex < questions.length - 1) {
+      const nextIndex = currentQuestionIndex + 1;
+      setCurrentQuestionIndex(nextIndex);
+      router.push(`/dma/questions?lang=${language}&role=${role}&question=${nextIndex}`);
+    } else {
+      handleSubmitAssessment();
+    }
+  }, [currentQuestionIndex, questions.length, language, role, router, handleSubmitAssessment, allResponses, sessionId, assessmentCode]);
 
   const handlePrevious = useCallback(() => {
     if (currentQuestionIndex > 0) {
@@ -326,28 +223,19 @@ const handleNext = useCallback(async () => {
       setCurrentQuestionIndex(prevIndex);
       router.push(`/dma/questions?lang=${language}&role=${role}&question=${prevIndex}`);
     }
-  }, [currentQuestionIndex, router, language, role]);
+  }, [currentQuestionIndex, language, role, router]);
 
-  const getProgressPercentage = useCallback(() => {
-    return Math.round(((currentQuestionIndex + 1) / questions.length) * 100);
-  }, [currentQuestionIndex, questions.length]);
-
-  const getAnsweredCount = useCallback(() => {
-    return Object.keys(allResponses).length;
-  }, [allResponses]);
-
-  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
-  const currentQuestion = useMemo(() => questions[currentQuestionIndex], [questions, currentQuestionIndex]);
+  const getProgressPercentage = () => {
+    const answered = Object.keys(allResponses).length;
+    return Math.round((answered / questions.length) * 100);
+  };
 
   if (loading) {
     return (
-      <div className="page-container">
-        <div className="container">
-          <div style={{ textAlign: 'center', paddingTop: '100px' }}>
-            <div style={{ fontSize: '1.2rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-primary)' }}>
-              {getText('loading')}
-              </div>
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-[#FAF5FF] to-[#F3E8FF] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#8B5CF6] mx-auto mb-4"></div>
+          <p className="text-[#1E1B4B]">{getText('loading')}</p>
         </div>
       </div>
     );
@@ -355,299 +243,181 @@ const handleNext = useCallback(async () => {
 
   if (error || questions.length === 0) {
     return (
-      <div className="page-container">
-        <div className="container">
-          <div style={{ textAlign: 'center', paddingTop: '100px' }}>
-            <h2 style={{ color: 'var(--danger)', marginBottom: '20px' }}>
-              {getText('error')}
-            </h2>
-            <p style={{ marginBottom: '30px', color: 'var(--text-secondary)', fontFamily: 'var(--font-primary)' }}>
-              {error || getText('error')}
-            </p>
-            <button onClick={() => {
+      <div className="min-h-screen bg-gradient-to-br from-[#FAF5FF] to-[#F3E8FF] flex items-center justify-center p-4">
+        <div className="text-center">
+          <h2 className="text-red-600 text-xl font-semibold mb-4">{getText('error')}</h2>
+          <p className="text-[#4C1D95] mb-6">{error || getText('error')}</p>
+          <button
+            onClick={() => {
               initializationRef.current = false;
               initializeAssessment();
-            }} className="btn-primary">
-              {getText('tryAgain')}
-            </button>
-          </div>
+            }}
+            className="px-6 py-2 bg-[#8B5CF6] text-white rounded-lg hover:bg-[#7C3AED] transition-colors"
+          >
+            {getText('tryAgain')}
+          </button>
         </div>
       </div>
     );
   }
 
+  const progressPercentage = getProgressPercentage();
+  const answeredCount = Object.keys(allResponses).length;
+  const isAnswered = allResponses[currentQuestion.id] !== undefined;
+
   return (
-    <div className={`page-container ${language === 'ar' ? 'rtl' : ''}`}>
-      <div className="container">
-        <div style={{ maxWidth: '900px', margin: '0 auto', paddingTop: '40px' }}>
-          
-          {/* Language Indicator */}
-          <div style={{ textAlign: language === 'ar' ? 'left' : 'right', marginBottom: '20px' }}>
-            <span style={{ 
-              fontSize: '0.9rem', 
-              color: 'var(--text-secondary)',
-              fontFamily: 'var(--font-primary)'
-            }}>
-              {getText('language')}: {language === 'ar' ? 'العربية' : 'English'}
+    <div className={`min-h-screen bg-gradient-to-br from-[#FAF5FF] to-[#F3E8FF] p-4 flex items-center justify-center ${language === 'ar' ? 'rtl' : ''}`}>
+      <div className="w-full max-w-2xl">
+        {/* Welcome Back Message */}
+        {isResuming && resumeUserData && (
+          <div className="bg-violet-50 border border-violet-200 rounded-lg p-4 mb-4 flex items-center gap-3">
+            <span className="text-2xl">👋</span>
+            <div>
+              <p className="font-semibold text-[#4C1D95]">
+                {getText('welcomeBack')}, {resumeUserData.name}!
+              </p>
+              <p className="text-sm text-[#8B5CF6]">
+                {getText('continuingAssessment')}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Progress Bar - Compact 2 lines */}
+        <div className="bg-white rounded-lg border border-violet-200 p-4 mb-4 shadow-sm">
+          <div className="flex items-center justify-between mb-2 text-sm">
+            <span className="text-[#4C1D95]">
+              {answeredCount} / {questions.length} answered
+            </span>
+            <span className="font-semibold text-[#8B5CF6]">{progressPercentage}%</span>
+          </div>
+          <div className="w-full bg-violet-100 rounded-full h-2">
+            <div
+              className="bg-[#8B5CF6] h-2 rounded-full transition-all duration-300"
+              style={{ width: `${progressPercentage}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Question Card */}
+        <div className="bg-white rounded-xl border border-violet-200 p-6 shadow-lg">
+          {/* Header with Subdomain and Question Number */}
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-[#8B5CF6] text-xs font-medium tracking-wide uppercase">
+              {currentQuestion.subdomain || 'Assessment'}
+            </span>
+            <span className="text-[#4C1D95] opacity-60 text-xs">
+              {currentQuestionIndex + 1} / {questions.length}
             </span>
           </div>
 
-                      {/* Welcome Back Message for Resume */}
-            {isResuming && resumeUserData && (
-              <div className="assessment-card" style={{ 
-                marginBottom: '20px', 
-                backgroundColor: 'rgba(40, 167, 69, 0.1)',
-                borderLeft: language === 'ar' ? 'none' : '4px solid var(--success)',
-                borderRight: language === 'ar' ? '4px solid var(--success)' : 'none'
-              }}>
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '12px',
-                  flexDirection: language === 'ar' ? 'row-reverse' : 'row'
-                }}>
-                  <span style={{ fontSize: '1.5rem' }}>👋</span>
-                  <div style={{ textAlign: language === 'ar' ? 'right' : 'left' }}>
-                    <p style={{ 
-                      margin: '0', 
-                      fontWeight: '600', 
-                      color: 'var(--success)',
-                      fontFamily: 'var(--font-primary)'
-                    }}>
-                      {getText('welcomeBack')}, {resumeUserData.name}!
-                    </p>
-                    <p style={{ 
-                      margin: '5px 0 0 0', 
-                      fontSize: '0.9rem', 
-                      color: 'var(--text-secondary)',
-                      fontFamily: 'var(--font-primary)'
-                    }}>
-                      {getText('continuingAssessment')}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-
-
-
-
-          {/* Progress Section */}
-          <div className="assessment-card" style={{ marginBottom: '30px' }}>
-            <div style={{ marginBottom: '15px' }}>
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                marginBottom: '8px',
-                flexDirection: language === 'ar' ? 'row-reverse' : 'row'
-              }}>
-                <span style={{ fontFamily: 'var(--font-primary)', fontWeight: '600' }}>
-                  {getText('progress')}: {getProgressPercentage()}% {getText('complete')}
-                </span>
-                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontFamily: 'var(--font-primary)' }}>
-                  {getAnsweredCount()} {getText('of')} {questions.length} {getText('answered')}
-                  </span>
-              </div>
-              
-              <div className="progress-bar">
-                <div 
-                  className="progress-fill"
-                  style={{ width: `${getProgressPercentage()}%` }}
-                />
-              </div>
+          {/* Question Title and Icon */}
+          <div className="mb-5">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-2xl">{currentQuestion.icon || '📋'}</span>
+              <h3 className="text-base font-semibold text-[#1E1B4B]">
+                {currentQuestion.title}
+              </h3>
             </div>
-
-            <div style={{ 
-              textAlign: 'center',
-              fontFamily: 'var(--font-primary)',
-              fontSize: '1.1rem',
-              fontWeight: '600'
-            }}>
-              {getText('question')} {currentQuestionIndex + 1} {getText('of')} {questions.length}
-            </div>
+            <h2 className="text-lg font-medium text-[#4C1D95] leading-relaxed">
+              {currentQuestion.question}
+            </h2>
           </div>
 
-          {/* Question Content */}
-          <div className="assessment-card" style={{ 
-            minHeight: '500px', 
-            display: 'flex', 
-            flexDirection: 'column',
-            marginBottom: '20px'
-          }}>
-            
-            {/* Scenario */}
-            {currentQuestion.scenario && (
-              <div style={{ 
-                marginBottom: '25px',
-                direction: language === 'ar' ? 'rtl' : 'ltr'
-              }}>
-                <div style={{
-                  color: 'var(--secondary-blue)',
-                  marginBottom: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  fontWeight: '600',
-                  flexDirection: language === 'ar' ? 'row-reverse' : 'row',
-                  fontFamily: 'var(--font-primary)'
-                }}>
-                  📖 <strong>{getText('scenario')}:</strong>
-                </div>
-                <div style={{ 
-                  fontSize: '0.95rem', 
-                  color: 'var(--text-dark)',
-                  fontStyle: 'italic',
-                  padding: '12px',
-                  backgroundColor: 'var(--light-gray)',
-                  borderRadius: '8px',
-                  lineHeight: '1.4',
-                  textAlign: language === 'ar' ? 'right' : 'left',
-                  fontFamily: 'var(--font-primary)',
-                  direction: language === 'ar' ? 'rtl' : 'ltr'
-                }}>
-                  {currentQuestion.scenario}
-                </div>
-              </div>
-            )}
-
-            {/* Question */}
-            <div style={{ 
-              marginBottom: '20px',
-              direction: language === 'ar' ? 'rtl' : 'ltr'
-            }}>
-              <h2 style={{ 
-                marginBottom: '10px', 
-                color: 'var(--primary-navy)', 
-                fontSize: '1.4rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                flexDirection: language === 'ar' ? 'row-reverse' : 'row',
-                textAlign: language === 'ar' ? 'right' : 'left',
-                fontFamily: 'var(--font-primary)'
-              }}>
-                <span style={{ fontSize: '1.8rem' }}>{currentQuestion.icon}</span>
-                {currentQuestion.title}
-              </h2>
-              <p style={{ 
-                fontSize: '1.1rem', 
-                color: 'var(--text-dark)', 
-                margin: '0', 
-                lineHeight: '1.5',
-                textAlign: language === 'ar' ? 'right' : 'left',
-                fontFamily: 'var(--font-primary)',
-                direction: language === 'ar' ? 'rtl' : 'ltr'
-              }}>
-                {currentQuestion.question}
+          {/* Scenario if exists */}
+          {currentQuestion.scenario && (
+            <div className="mb-5 p-3 bg-violet-50 border-l-4 border-[#8B5CF6] rounded">
+              <p className="text-sm text-[#4C1D95] italic">
+                <strong className="text-[#8B5CF6]">Scenario:</strong> {currentQuestion.scenario}
               </p>
             </div>
+          )}
 
-            {/* Options */}
-            <div style={{ 
-              flex: 1, 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: '8px', 
-              minHeight: '0',
-              direction: language === 'ar' ? 'rtl' : 'ltr'
-            }}>
-              {shuffledOptions.map((option, index) => (
-                <label key={`${option.value}-${index}`} style={{ 
-                  display: 'flex', 
-                  alignItems: 'flex-start', 
-                  gap: '12px',
-                  cursor: 'pointer',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: '2px solid transparent',
-                  backgroundColor: allResponses[currentQuestion.id] === option.value ? 'rgba(127, 122, 254, 0.15)' : 'white',
-                  borderColor: allResponses[currentQuestion.id] === option.value ? 'var(--secondary-blue)' : 'var(--light-gray)',
-                  transition: 'all 0.2s ease',
-                  flexDirection: language === 'ar' ? 'row-reverse' : 'row',
-                  textAlign: language === 'ar' ? 'right' : 'left'
-                }}>
-                  <input
-                    type="radio"
-                    name={`question-${currentQuestion.id}`}
-                    value={option.value}
-                    checked={allResponses[currentQuestion.id] === option.value}
-                    onChange={() => handleAnswerSelect(currentQuestion.id, option.value)}
-                    style={{ 
-                      marginTop: '2px',
-                      accentColor: 'var(--secondary-blue)',
-                      order: language === 'ar' ? 2 : 1
-                    }}
-                  />
-                  <span style={{ 
-                    fontSize: '0.95rem', 
-                    lineHeight: '1.4',
-                    order: language === 'ar' ? 1 : 2,
-                    flex: 1,
-                    fontFamily: 'var(--font-primary)',
-                    direction: language === 'ar' ? 'rtl' : 'ltr'
-                  }}>
-                    {option.text}
-                  </span>
-                </label>
-              ))}
+          {/* Options */}
+          <div className="space-y-2">
+            {shuffledOptions.map((option, index) => {
+              const isSelected = allResponses[currentQuestion.id] === option.value;
+              const isSpecial = option.value === 'na' || option.value === 'ns';
+
+              return (
+                <button
+                  key={`${option.value}-${index}`}
+                  onClick={() => handleAnswerSelect(currentQuestion.id, option.value)}
+                  className={`w-full text-left px-4 py-3 rounded-lg transition-all duration-200 flex items-center gap-3 ${
+                    isSelected
+                      ? 'bg-violet-50 border border-violet-300 text-[#1E1B4B]'
+                      : 'bg-slate-50 border border-transparent text-slate-600 hover:bg-violet-50/50 hover:text-[#4C1D95]'
+                  }`}
+                >
+                  <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all ${
+                    isSelected
+                      ? 'border-[#8B5CF6] bg-[#8B5CF6]'
+                      : 'border-slate-300'
+                  }`}>
+                    {isSelected && (
+                      <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className="text-sm">{option.text}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Footer with NA/NS and Navigation */}
+          <div className="flex items-center justify-between mt-5 pt-4 border-t border-violet-100">
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleAnswerSelect(currentQuestion.id, 'na')}
+                className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
+                  allResponses[currentQuestion.id] === 'na'
+                    ? 'bg-violet-100 text-[#4C1D95]'
+                    : 'text-slate-400 hover:text-[#8B5CF6]'
+                }`}
+              >
+                {getText('na')}
+              </button>
+              <button
+                onClick={() => handleAnswerSelect(currentQuestion.id, 'ns')}
+                className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
+                  allResponses[currentQuestion.id] === 'ns'
+                    ? 'bg-violet-100 text-[#4C1D95]'
+                    : 'text-slate-400 hover:text-[#8B5CF6]'
+                }`}
+              >
+                {getText('notSure')}
+              </button>
+            </div>
+
+            <div className="flex gap-2">
+              {currentQuestionIndex > 0 && (
+                <button
+                  onClick={handlePrevious}
+                  className="px-4 py-2 text-sm text-slate-400 hover:text-[#8B5CF6] transition-colors"
+                >
+                  {getText('previous')}
+                </button>
+              )}
+              <button
+                onClick={handleNext}
+                disabled={!isAnswered || submitting}
+                className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
+                  isAnswered && !submitting
+                    ? 'bg-[#8B5CF6] text-white hover:bg-[#7C3AED]'
+                    : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                }`}
+              >
+                {submitting
+                  ? getText('submitting')
+                  : currentQuestionIndex === questions.length - 1
+                    ? getText('finish')
+                    : getText('next')
+                }
+              </button>
             </div>
           </div>
-
-          {/* Navigation */}
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center',
-            marginBottom: '40px',
-            flexDirection: language === 'ar' ? 'row-reverse' : 'row',
-            gap: '10px'
-          }}>
-            
-            {/* Previous Button */}
-            {currentQuestionIndex > 0 ? (
-              <button 
-                onClick={handlePrevious}
-                className="btn-secondary"
-                style={{ fontSize: '1rem', padding: '12px 20px' }}
-              >
-                ← {getText('previous')}
-              </button>
-            ) : (
-              <Link
-                href={`/dma/role-selection?lang=${language}`}
-                className="btn-secondary"
-                style={{ 
-                  fontSize: '1rem', 
-                  padding: '12px 20px',
-                  textDecoration: 'none'
-                }}
-              >
-                ← {getText('backToRole')}
-              </Link>
-            )}
-
-{/* Removed Save & Exit Button - Now empty space for better layout */}
-<div style={{ flex: 1 }}></div>
-
-            {/* Next/Finish Button */}
-            <button 
-              onClick={handleNext}
-              disabled={!allResponses[currentQuestion.id] || submitting}
-              className="btn-primary"
-              style={{ 
-                fontSize: '1rem', 
-                padding: '12px 24px',
-                opacity: (!allResponses[currentQuestion.id] || submitting) ? 0.5 : 1,
-                cursor: (!allResponses[currentQuestion.id] || submitting) ? 'not-allowed' : 'pointer'
-              }}
-            >
-              {submitting ? getText('submitting') : 
-               currentQuestionIndex === questions.length - 1 ? getText('finish') : getText('next')} →
-            </button>
-          </div>
-
         </div>
       </div>
     </div>
@@ -656,7 +426,11 @@ const handleNext = useCallback(async () => {
 
 export default function AssessmentPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500"></div>
+      </div>
+    }>
       <AssessmentPageContent />
     </Suspense>
   );
