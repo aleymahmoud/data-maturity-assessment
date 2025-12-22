@@ -147,7 +147,7 @@ export default function AdminSidebarLayout({ children }) {
                     color: '#6b7280',
                     margin: 0
                   }}>
-                    Data Maturity Assessment
+                    Omnisight Analytics
                   </p>
                 </div>
               </div>
