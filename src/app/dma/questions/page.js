@@ -234,7 +234,7 @@ function AssessmentPageContent() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#FAF5FF] to-[#F3E8FF] flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#8B5CF6] mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E1B4B] mx-auto mb-4"></div>
           <p className="text-[#1E1B4B]">{getText('loading')}</p>
         </div>
       </div>
@@ -252,7 +252,7 @@ function AssessmentPageContent() {
               initializationRef.current = false;
               initializeAssessment();
             }}
-            className="px-6 py-2 bg-[#8B5CF6] text-white rounded-lg hover:bg-[#7C3AED] transition-colors"
+            className="px-6 py-2 bg-[#1E1B4B] text-white rounded-lg hover:bg-[#2D2960] transition-colors"
           >
             {getText('tryAgain')}
           </button>
@@ -286,14 +286,14 @@ function AssessmentPageContent() {
         {/* Progress Bar - Compact 2 lines */}
         <div className="bg-white rounded-lg border border-violet-200 p-4 mb-4 shadow-sm">
           <div className="flex items-center justify-between mb-2 text-sm">
-            <span className="text-[#4C1D95]">
+            <span className="text-[#1E1B4B]">
               {answeredCount} / {questions.length} answered
             </span>
-            <span className="font-semibold text-[#8B5CF6]">{progressPercentage}%</span>
+            <span className="font-semibold text-[#1E1B4B]">{progressPercentage}%</span>
           </div>
           <div className="w-full bg-violet-100 rounded-full h-2">
             <div
-              className="bg-[#8B5CF6] h-2 rounded-full transition-all duration-300"
+              className="bg-[#1E1B4B] h-2 rounded-full transition-all duration-300"
               style={{ width: `${progressPercentage}%` }}
             />
           </div>
@@ -303,10 +303,10 @@ function AssessmentPageContent() {
         <div className="bg-white rounded-xl border border-violet-200 p-6 shadow-lg">
           {/* Header with Subdomain and Question Number */}
           <div className="flex items-center justify-between mb-4">
-            <span className="text-[#8B5CF6] text-xs font-medium tracking-wide uppercase">
+            <span className="text-[#1E1B4B] text-xs font-medium tracking-wide uppercase">
               {currentQuestion.subdomain || 'Assessment'}
             </span>
-            <span className="text-[#4C1D95] opacity-60 text-xs">
+            <span className="text-[#1E1B4B] opacity-60 text-xs">
               {currentQuestionIndex + 1} / {questions.length}
             </span>
           </div>
@@ -326,9 +326,9 @@ function AssessmentPageContent() {
 
           {/* Scenario if exists */}
           {currentQuestion.scenario && (
-            <div className="mb-5 p-3 bg-violet-50 border-l-4 border-[#8B5CF6] rounded">
-              <p className="text-sm text-[#4C1D95] italic">
-                <strong className="text-[#8B5CF6]">Scenario:</strong> {currentQuestion.scenario}
+            <div className="mb-5 p-3 bg-violet-50 border-l-4 border-[#1E1B4B] rounded">
+              <p className="text-sm text-[#1E1B4B] italic">
+                <strong className="text-[#1E1B4B]">Scenario:</strong> {currentQuestion.scenario}
               </p>
             </div>
           )}
@@ -345,13 +345,13 @@ function AssessmentPageContent() {
                   onClick={() => handleAnswerSelect(currentQuestion.id, option.value)}
                   className={`w-full text-left px-4 py-3 rounded-lg transition-all duration-200 flex items-center gap-3 ${
                     isSelected
-                      ? 'bg-violet-50 border border-violet-300 text-[#1E1B4B]'
-                      : 'bg-slate-50 border border-transparent text-slate-600 hover:bg-violet-50/50 hover:text-[#4C1D95]'
+                      ? 'bg-violet-50 border border-[#1E1B4B] text-[#1E1B4B]'
+                      : 'bg-slate-50 border border-transparent text-slate-600 hover:bg-violet-50/50 hover:text-[#1E1B4B]'
                   }`}
                 >
                   <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all ${
                     isSelected
-                      ? 'border-[#8B5CF6] bg-[#8B5CF6]'
+                      ? 'border-[#1E1B4B] bg-[#1E1B4B]'
                       : 'border-slate-300'
                   }`}>
                     {isSelected && (
@@ -373,8 +373,8 @@ function AssessmentPageContent() {
                 onClick={() => handleAnswerSelect(currentQuestion.id, 'na')}
                 className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
                   allResponses[currentQuestion.id] === 'na'
-                    ? 'bg-violet-100 text-[#4C1D95]'
-                    : 'text-slate-400 hover:text-[#8B5CF6]'
+                    ? 'bg-violet-100 text-[#1E1B4B]'
+                    : 'text-slate-400 hover:text-[#1E1B4B]'
                 }`}
               >
                 {getText('na')}
@@ -383,8 +383,8 @@ function AssessmentPageContent() {
                 onClick={() => handleAnswerSelect(currentQuestion.id, 'ns')}
                 className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
                   allResponses[currentQuestion.id] === 'ns'
-                    ? 'bg-violet-100 text-[#4C1D95]'
-                    : 'text-slate-400 hover:text-[#8B5CF6]'
+                    ? 'bg-violet-100 text-[#1E1B4B]'
+                    : 'text-slate-400 hover:text-[#1E1B4B]'
                 }`}
               >
                 {getText('notSure')}
@@ -395,7 +395,7 @@ function AssessmentPageContent() {
               {currentQuestionIndex > 0 && (
                 <button
                   onClick={handlePrevious}
-                  className="px-4 py-2 text-sm text-slate-400 hover:text-[#8B5CF6] transition-colors"
+                  className="px-4 py-2 text-sm text-slate-400 hover:text-[#1E1B4B] transition-colors"
                 >
                   {getText('previous')}
                 </button>
@@ -405,7 +405,7 @@ function AssessmentPageContent() {
                 disabled={!isAnswered || submitting}
                 className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
                   isAnswered && !submitting
-                    ? 'bg-[#8B5CF6] text-white hover:bg-[#7C3AED]'
+                    ? 'bg-[#1E1B4B] text-white hover:bg-[#2D2960]'
                     : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                 }`}
               >

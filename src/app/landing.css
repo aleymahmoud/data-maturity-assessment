@@ -1,16 +1,16 @@
 /* Omnisight Analytics Landing Page Styles */
 
-/* Color Theme - Purple Rebrand */
+/* Color Theme - Deep Indigo Dominant */
 :root {
   --omnisight-primary: #1E1B4B;
-  --omnisight-primary-light: #4C1D95;
+  --omnisight-primary-light: #2D2960;
   --omnisight-primary-dark: #1E1B4B;
-  --omnisight-accent: #8B5CF6;
+  --omnisight-accent: #1E1B4B;
   --omnisight-text: #1E1B4B;
-  --omnisight-text-light: #4C1D95;
+  --omnisight-text-light: #2D2960;
   --omnisight-bg: #ffffff;
   --omnisight-bg-light: #FAF5FF;
-  --omnisight-gradient: linear-gradient(135deg, #1E1B4B 0%, #8B5CF6 100%);
+  --omnisight-gradient: linear-gradient(135deg, #1E1B4B 0%, #2D2960 100%);
 }
 
 /* Landing Page Container */

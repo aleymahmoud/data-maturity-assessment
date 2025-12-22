@@ -3,16 +3,16 @@
 :root {
   /* Primary Colors - Purple Theme */
   --primary-navy: #1E1B4B;
-  --accent-orange: #8B5CF6;
-  --secondary-blue: #4C1D95;
+  --accent-orange: #1E1B4B;
+  --secondary-blue: #1E1B4B;
   --light-gray: #F3E8FF;
   --white: #ffffff;
 
   /* Text Colors */
   --text-primary: #1E1B4B;
-  --text-secondary: #8B5CF6;
+  --text-secondary: #1E1B4B;
   --text-dark: #1E1B4B;
-  --text-light: #4C1D95;
+  --text-light: #1E1B4B;
 
   /* Status Colors */
   --success: #28a745;
@@ -146,7 +146,7 @@ p {
 
 /* BUTTONS - Mobile First */
 .btn-primary {
-  background: linear-gradient(135deg, var(--primary-navy), var(--secondary-blue));
+  background: #1E1B4B;
   color: white;
   border: none;
   padding: var(--spacing-sm) var(--spacing-lg);
@@ -167,7 +167,7 @@ p {
 }
 
 .btn-secondary {
-  background: var(--accent-orange);
+  background: #1E1B4B;
   color: white;
   border: none;
   padding: var(--spacing-sm) var(--spacing-md);
@@ -190,12 +190,13 @@ p {
 .btn-primary:hover,
 .btn-primary:focus {
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.3);
+  box-shadow: 0 4px 16px rgba(30, 27, 75, 0.3);
+  background: #2D2960;
 }
 
 .btn-secondary:hover,
 .btn-secondary:focus {
-  background: #7C3AED;
+  background: #2D2960;
   transform: translateY(-1px);
 }
 

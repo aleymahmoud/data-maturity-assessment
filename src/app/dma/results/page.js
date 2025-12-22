@@ -23,19 +23,19 @@ ChartJS.register(
   Legend
 );
 
-// Domain group color mapping - Purple Theme
+// Domain group color mapping - Deep Indigo Dominant
 const DOMAIN_COLORS = {
   'DATA_LIFECYCLE': {
-    border: 'rgba(139, 92, 246, 1)',
-    background: 'rgba(139, 92, 246, 0.2)',
-    point: 'rgba(139, 92, 246, 1)',
-    text: '#8B5CF6'
+    border: 'rgba(30, 27, 75, 1)',
+    background: 'rgba(30, 27, 75, 0.2)',
+    point: 'rgba(30, 27, 75, 1)',
+    text: '#1E1B4B'
   },
   'GOVERNANCE_PROTECTION': {
-    border: 'rgba(76, 29, 149, 1)',
-    background: 'rgba(76, 29, 149, 0.2)',
-    point: 'rgba(76, 29, 149, 1)',
-    text: '#4C1D95'
+    border: 'rgba(30, 27, 75, 1)',
+    background: 'rgba(30, 27, 75, 0.2)',
+    point: 'rgba(30, 27, 75, 1)',
+    text: '#1E1B4B'
   },
   'ORGANIZATIONAL_ENABLERS': {
     border: 'rgba(30, 27, 75, 1)',
