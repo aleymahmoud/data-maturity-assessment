@@ -1,24 +1,41 @@
 /* Omnisight Analytics Landing Page Styles */
 
-/* Import Corpta DEMO from Google Fonts or use system fallback */
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+/* Import fonts from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap');
 
-/* Color Theme - Deep Indigo Dominant */
+/* Color Theme - Brand Guidelines */
 :root {
-  --omnisight-primary: #1E1B4B;
+  /* Primary Colors */
+  --deep-indigo: #1E1B4B;
+  --royal-purple: #4C1D95;
+  --violet: #8B5CF6;
+  --light-violet: #C4B5FD;
+  --lavender-white: #F5F3FF;
+
+  /* Neutral Colors */
+  --black: #0A0A0F;
+  --gray-800: #1E293B;
+  --gray-600: #475569;
+  --gray-400: #94A3B8;
+  --gray-200: #E2E8F0;
+  --gray-100: #F8FAFC;
+  --white: #FFFFFF;
+
+  /* Mapped Variables */
+  --omnisight-primary: var(--deep-indigo);
   --omnisight-primary-light: #2D2960;
-  --omnisight-primary-dark: #1E1B4B;
-  --omnisight-accent: #1E1B4B;
-  --omnisight-text: #1E1B4B;
-  --omnisight-text-light: #2D2960;
-  --omnisight-bg: #ffffff;
-  --omnisight-bg-light: #FAF5FF;
-  --omnisight-gradient: linear-gradient(135deg, #1E1B4B 0%, #2D2960 100%);
+  --omnisight-primary-dark: var(--deep-indigo);
+  --omnisight-accent: var(--violet);
+  --omnisight-text: var(--gray-800);
+  --omnisight-text-light: var(--gray-600);
+  --omnisight-bg: var(--white);
+  --omnisight-bg-light: var(--lavender-white);
+  --omnisight-gradient: linear-gradient(135deg, var(--deep-indigo) 0%, #2D2960 100%);
 }
 
 /* Landing Page Container */
 .landing-page {
-  font-family: 'Montserrat', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   color: var(--omnisight-text);
   line-height: 1.6;
 }
