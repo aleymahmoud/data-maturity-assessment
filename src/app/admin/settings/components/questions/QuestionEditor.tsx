@@ -138,9 +138,8 @@ export function QuestionEditor({ question, subdomains, onSave, onCancel }: Quest
               backgroundColor: 'white'
             }}
           >
-            <option value="full">Full Assessment Only</option>
-            <option value="quick">Quick Assessment Only</option>
-            <option value="full,quick">Both (Full & Quick)</option>
+            <option value="quick">Quick (appears in both quick and full)</option>
+            <option value="full">Full Only (appears only in full)</option>
           </select>
         </div>
 

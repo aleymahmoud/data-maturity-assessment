@@ -143,13 +143,26 @@ export async function POST(request) {
       } while (true)
 
       // Get questions based on assessment type
+      // Logic:
+      // - Questions labeled "quick" or "full,quick": appear in BOTH quick and full
+      // - Questions labeled "full": appear ONLY in full assessment
+      //
+      // Quick assessment: only questions containing "quick" in assessmentTypes
+      // Full assessment: all active questions (both "quick" and "full")
+      const whereClause = {
+        isActive: true
+      }
+
+      if (assessmentType === 'quick') {
+        // Quick assessment: only questions with "quick" in their label
+        whereClause.assessmentTypes = {
+          contains: 'quick'
+        }
+      }
+      // For "full" assessment, no filter - get all active questions
+
       const questions = await prisma.question.findMany({
-        where: {
-          isActive: true,
-          assessmentTypes: {
-            contains: assessmentType // "full" or "quick"
-          }
-        },
+        where: whereClause,
         select: {
           code: true
         },

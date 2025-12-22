@@ -451,8 +451,8 @@ export default function AssessmentCodesPage() {
       async () => {
         try {
           const url = forceDelete
-            ? `/api/admin/assessment-codes?code=${code}&force=true`
-            : `/api/admin/assessment-codes?code=${code}`
+            ? `/api/admin/assessment-codes?code=${encodeURIComponent(code)}&force=true`
+            : `/api/admin/assessment-codes?code=${encodeURIComponent(code)}`
 
           const response = await fetch(url, {
             method: 'DELETE'
@@ -944,11 +944,11 @@ export default function AssessmentCodesPage() {
         const daysUntilExpiry = Math.ceil((expiresAt - currentDate) / (1000 * 60 * 60 * 24))
 
         setLocalFormData({
-          organization: codeData.organization_name || '',
-          description: codeData.intended_recipient || '',
+          organization: codeData.organization_name ?? '',
+          description: codeData.intended_recipient ?? '',
           expirationDays: Math.max(1, daysUntilExpiry),
-          assessmentType: codeData.assessment_type || 'full',
-          maxUses: codeData.max_uses || 1
+          assessmentType: codeData.assessment_type ?? 'full',
+          maxUses: codeData.max_uses ?? 1
         })
 
         // Fetch questions for this code

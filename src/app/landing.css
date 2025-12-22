@@ -1,5 +1,8 @@
 /* Omnisight Analytics Landing Page Styles */
 
+/* Import Corpta DEMO from Google Fonts or use system fallback */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+
 /* Color Theme - Deep Indigo Dominant */
 :root {
   --omnisight-primary: #1E1B4B;
@@ -43,9 +46,11 @@
   text-decoration: none;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-family: 'Courier New', 'Roboto Mono', monospace;
-  letter-spacing: 0.5px;
+  gap: 0.75rem;
+  font-family: 'Orbitron', 'Courier New', 'Roboto Mono', monospace;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  line-height: 1;
 }
 
 /* Logo icon now handled by Logo component */
@@ -71,7 +76,7 @@
 }
 
 .landing-nav-links a.active {
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .landing-nav-cta {
@@ -79,7 +84,7 @@
   color: white !important;
   padding: 0.75rem 1.5rem;
   border-radius: 8px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .landing-nav-cta:hover {
