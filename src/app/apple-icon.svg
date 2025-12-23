@@ -1,8 +1,8 @@
-<svg width="180" height="180" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+<svg width="180" height="180" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
   <!-- Background -->
-  <rect width="60" height="60" fill="#1e1b4b"/>
+  <rect width="80" height="80" fill="#1e1b4b"/>
   <!-- The O - Circle representing complete vision/Omni -->
-  <circle cx="26" cy="34" r="20" fill="none" stroke="#ffffff" stroke-width="4"/>
-  <!-- North Star - 8-point star shape -->
-  <path d="M 48 14 L 50 6 L 52 14 L 60 16 L 52 18 L 50 26 L 48 18 L 40 16 Z" fill="#ffffff"/>
+  <circle cx="32" cy="44" r="26" fill="none" stroke="#ffffff" stroke-width="4"/>
+  <!-- North Star - Clean 4-pointed star (no rays/tails) -->
+  <path d="M 58 18 L 61 8 L 64 18 L 74 21 L 64 24 L 61 34 L 58 24 L 48 21 Z" fill="#ffffff"/>
 </svg>
